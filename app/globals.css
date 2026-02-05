@@ -1,26 +1,193 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f2e8;
+  --foreground: #1b1a16;
+  --forest: #2f5f3a;
+  --forest-deep: #173825;
+  --moss: #5f7f61;
+  --pine: #1f4b33;
+  --clay: #b4694b;
+  --sun: #e2b13c;
+  --stone: #d7cdbb;
+  --mist: #fbf8f2;
+  --ink: #11120f;
+  --river: #2f5f73;
+  --danger: #b63b2e;
+  --success: #2b6f3a;
+  --shadow: 0 20px 60px rgba(17, 18, 15, 0.15);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--background);
+  --color-ink: var(--ink);
+  --color-forest: var(--forest);
+  --color-moss: var(--moss);
+  --color-pine: var(--pine);
+  --color-clay: var(--clay);
+  --color-sun: var(--sun);
+  --color-stone: var(--stone);
+  --color-mist: var(--mist);
+  --color-river: var(--river);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --shadow-glow: var(--shadow);
+  --font-sans: var(--font-sora);
+  --font-display: var(--font-fraunces);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--background);
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sora), sans-serif;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.bg-white,
+button.bg-white {
+  color: var(--ink);
+}
+
+.card-surface {
+  background: linear-gradient(180deg, #ffffff, #f7f2e8);
+  border: 1px solid rgba(17, 18, 15, 0.08);
+  box-shadow: var(--shadow);
+}
+
+.soft-border {
+  border: 1px solid rgba(17, 18, 15, 0.08);
+}
+
+.field {
+  background: #ffffff;
+  border: 1px solid rgba(17, 18, 15, 0.12);
+}
+
+.field:focus {
+  outline: 2px solid rgba(31, 58, 42, 0.25);
+  outline-offset: 2px;
+}
+
+.section-title {
+  font-family: var(--font-fraunces), serif;
+  letter-spacing: -0.02em;
+}
+
+.grain {
+  position: relative;
+}
+
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2311120f' fill-opacity='0.35'%3E%3Ccircle cx='20' cy='30' r='1'/%3E%3Ccircle cx='60' cy='80' r='1'/%3E%3Ccircle cx='120' cy='50' r='1'/%3E%3Ccircle cx='160' cy='120' r='1'/%3E%3Ccircle cx='90' cy='140' r='1'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.rdp {
+  --rdp-accent-color: var(--forest);
+  --rdp-background-color: #ffffff;
+  --rdp-outline: 2px solid rgba(31, 58, 42, 0.2);
+  --rdp-accent-color-dark: var(--pine);
+  --rdp-background-color-dark: #ffffff;
+  --rdp-outline-dark: 2px solid rgba(31, 58, 42, 0.2);
+  --rdp-day-height: 3.5rem;
+  --rdp-day-width: auto;
+  --rdp-day_button-height: 3.25rem;
+  --rdp-day_button-width: 100%;
+  --rdp-nav-height: 3.5rem;
+  --rdp-disabled-opacity: 1;
+  width: 100%;
+}
+
+.rdp-months {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+
+.rdp-month,
+.rdp-table {
+  width: 100%;
+}
+
+.rdp-months {
+  max-width: 100%;
+}
+
+.rdp-month_grid,
+.rdp-table {
+  table-layout: fixed;
+}
+
+.rdp-day {
+  width: auto;
+  height: 3.5rem;
+  text-align: center;
+}
+
+.rdp-day_button {
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.rdp-selected .rdp-day_button,
+.rdp-range_start .rdp-day_button,
+.rdp-range_middle .rdp-day_button,
+.rdp-range_end .rdp-day_button {
+  background-color: transparent;
+  color: var(--forest-deep);
+  border: none;
+}
+
+.rdp-disabled {
+  opacity: 1;
+}
+
+.rdp-disabled .rdp-day_button {
+  color: var(--forest-deep);
+  text-decoration-line: line-through;
+  text-decoration-color: var(--ink);
+  text-decoration-thickness: 2px;
+  text-decoration-skip-ink: none;
+}
+
+.rdp-month_caption {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.rdp-weekday {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.leaflet-container {
+  cursor: grab;
+  touch-action: none;
+}
+
+.leaflet-container.leaflet-dragging {
+  cursor: grabbing;
 }
