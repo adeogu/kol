@@ -31,55 +31,41 @@ export function MessagesClient() {
   const messagesRef = useRef<HTMLDivElement | null>(null);
 
   const selectedId = useMemo(() => {
-    return searchParams.get("conversation") ?? activeId;
+    return searchParams?.get("conversation") ?? activeId;
   }, [searchParams, activeId]);
 
-  const loadConversations = async () => {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    setUserId(user.id);
-    const { data } = await supabase
-      .from("conversations")
-      .select("*")
-      .or(`hunter_id.eq.${user.id},landowner_id.eq.${user.id}`);
-    setConversations((data ?? []) as Conversation[]);
-    if (!activeId && data && data.length > 0) {
-      setActiveId(data[0].id);
-    }
-  };
+  const markConversationRead = useCallback(
+    async (conversationId: string, currentUserId: string) => {
+      const supabase = createClient();
+      await supabase
+        .from("messages")
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+        })
+        .eq("conversation_id", conversationId)
+        .neq("sender_id", currentUserId)
+        .eq("is_read", false);
+    },
+    [],
+  );
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
-    setMessages((data ?? []) as Message[]);
-    if (userId) {
-      await markConversationRead(conversationId, userId);
-      window.dispatchEvent(new CustomEvent("huntstay:messages-read"));
-    }
-  }, [userId]);
-
-  const markConversationRead = async (
-    conversationId: string,
-    currentUserId: string,
-  ) => {
-    const supabase = createClient();
-    await supabase
-      .from("messages")
-      .update({
-        is_read: true,
-        read_at: new Date().toISOString(),
-      })
-      .eq("conversation_id", conversationId)
-      .neq("sender_id", currentUserId)
-      .eq("is_read", false);
-  };
+  const loadMessages = useCallback(
+    async (conversationId: string) => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+      setMessages((data ?? []) as Message[]);
+      if (userId) {
+        await markConversationRead(conversationId, userId);
+        window.dispatchEvent(new CustomEvent("huntstay:messages-read"));
+      }
+    },
+    [markConversationRead, userId],
+  );
 
   useRealtime({
     table: "messages",
@@ -89,11 +75,31 @@ export function MessagesClient() {
   });
 
   useEffect(() => {
-    loadConversations();
+    let active = true;
+    const load = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || !active) return;
+      setUserId(user.id);
+      const { data } = await supabase
+        .from("conversations")
+        .select("*")
+        .or(`hunter_id.eq.${user.id},landowner_id.eq.${user.id}`);
+      if (!active) return;
+      setConversations((data ?? []) as Conversation[]);
+      setActiveId((prev) => prev ?? data?.[0]?.id ?? null);
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
     if (selectedId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadMessages(selectedId);
     }
   }, [selectedId, loadMessages]);

@@ -1,7 +1,7 @@
 import { BookingRequestCard } from "@/components/landowner/booking-request-card";
 import { EarningsChart } from "@/components/landowner/earnings-chart";
 import { createServerSupabase } from "@/lib/supabase/server";
-import type { Booking } from "@/types";
+import type { Booking, Listing } from "@/types";
 
 export async function LandownerDashboard() {
   const supabase = await createServerSupabase();
@@ -9,23 +9,30 @@ export async function LandownerDashboard() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: listings } = await supabase
+  const { data: listingsData } = await supabase
     .from("listings")
     .select("*")
     .eq("owner_id", user?.id ?? "");
 
-  const { data: bookings } = await supabase
+  const listings = (listingsData as Listing[]) ?? [];
+
+  const { data: bookingsData } = await supabase
     .from("bookings")
     .select("*, listings(title)")
     .in(
       "listing_id",
-      listings?.map((listing) => listing.id) ?? [],
+      listings.map((listing) => listing.id),
     )
     .limit(20);
 
-  const pending = (bookings ?? []).filter((item) => item.status === "PENDING");
+  const bookings =
+    (bookingsData as Array<
+      Booking & { listings?: { title?: string | null } | null }
+    >) ?? [];
 
-  const totalEarnings = (bookings ?? []).reduce((sum, booking) => {
+  const pending = bookings.filter((item) => item.status === "PENDING");
+
+  const totalEarnings = bookings.reduce((sum, booking) => {
     if (booking.status === "COMPLETED") {
       return sum + Number(booking.total_price ?? 0);
     }
@@ -39,9 +46,9 @@ export async function LandownerDashboard() {
         <div className="rounded-3xl border border-ink/10 bg-white p-6">
           <p className="text-sm font-semibold text-ink">Property overview</p>
           <div className="mt-4 space-y-3 text-sm text-ink/70">
-            <p>Total listings: {listings?.length ?? 0}</p>
+            <p>Total listings: {listings.length}</p>
             <p>Pending bookings: {pending.length}</p>
-            <p>Active listings: {listings?.filter((item) => item.status === "PUBLISHED").length ?? 0}</p>
+            <p>Active listings: {listings.filter((item) => item.status === "PUBLISHED").length}</p>
           </div>
         </div>
       </section>
@@ -64,7 +71,7 @@ export async function LandownerDashboard() {
               key={booking.id}
               booking={{
                 ...(booking as Booking),
-                listing_title: booking.listings?.title,
+                listing_title: booking.listings?.title ?? undefined,
               }}
             />
           ))}

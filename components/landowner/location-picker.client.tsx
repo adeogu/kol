@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef } from "react";
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import type { LatLng } from "@/lib/geo";
 
@@ -22,6 +22,14 @@ function ClickHandler({ onSelect }: { onSelect: (value: LatLng) => void }) {
       onSelect({ lat: event.latlng.lat, lng: event.latlng.lng });
     },
   });
+  return null;
+}
+
+function MapReady({ onReady }: { onReady: (map: L.Map) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    onReady(map);
+  }, [map, onReady]);
   return null;
 }
 
@@ -64,15 +72,17 @@ export default function LocationPickerClient({
         touchZoom
         keyboard
         className="h-full w-full"
-        whenCreated={(map) => {
-          mapRef.current = map;
-          map.dragging.enable();
-          map.scrollWheelZoom.enable();
-          map.touchZoom.enable();
-          map.doubleClickZoom.enable();
-          map.keyboard.enable();
-        }}
       >
+        <MapReady
+          onReady={(map) => {
+            mapRef.current = map;
+            map.dragging.enable();
+            map.scrollWheelZoom.enable();
+            map.touchZoom.enable();
+            map.doubleClickZoom.enable();
+            map.keyboard.enable();
+          }}
+        />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -30,23 +30,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Booking not found." }, { status: 404 });
     }
 
-    const amount = Math.round(Number(booking.grand_total) * 100);
+    const bookingRecord = booking as unknown as {
+      id: string;
+      grand_total: number;
+      listings?: { title?: string | null } | null;
+    };
+
+    const amount = Math.round(Number(bookingRecord.grand_total) * 100);
     const intent = await stripe.paymentIntents.create({
       amount,
       currency: "eur",
       metadata: {
-        booking_id: booking.id,
-        listing_title: booking.listings?.title ?? "",
+        booking_id: bookingRecord.id,
+        listing_title: bookingRecord.listings?.title ?? "",
       },
     });
 
     await supabase
       .from("bookings")
       .update({ stripe_payment_intent_id: intent.id })
-      .eq("id", booking.id);
+      .eq("id", bookingRecord.id);
 
     return NextResponse.json({ clientSecret: intent.client_secret });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Unable to create payment intent." },
       { status: 500 },

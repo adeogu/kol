@@ -14,15 +14,24 @@ export default async function CalendarPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: bookings } = await supabase
+  const { data: bookingsData } = await supabase
     .from("bookings")
     .select("id,start_date,end_date,status,listings!inner(title,owner_id)")
     .eq("listings.owner_id", user?.id ?? "")
     .neq("status", "CANCELLED")
     .order("start_date", { ascending: false });
 
+  const bookings =
+    (bookingsData as Array<{
+      id: string;
+      start_date: string;
+      end_date: string;
+      status: string;
+      listings?: { title?: string | null } | null;
+    }>) ?? [];
+
   const dateKeys = new Set<string>();
-  (bookings ?? []).forEach((booking) => {
+  bookings.forEach((booking) => {
     if (!booking.start_date || !booking.end_date) return;
     let current = new Date(`${booking.start_date}T00:00:00`);
     const end = new Date(`${booking.end_date}T00:00:00`);
@@ -36,14 +45,13 @@ export default async function CalendarPage() {
     }
   });
 
-  const calendarBookings =
-    bookings?.map((booking) => ({
-      id: booking.id,
-      listingTitle: booking.listings?.title ?? null,
-      startDate: booking.start_date,
-      endDate: booking.end_date,
-      status: booking.status,
-    })) ?? [];
+  const calendarBookings = bookings.map((booking) => ({
+    id: booking.id,
+    listingTitle: booking.listings?.title ?? null,
+    startDate: booking.start_date,
+    endDate: booking.end_date,
+    status: booking.status,
+  }));
 
   return (
     <div className="space-y-6">

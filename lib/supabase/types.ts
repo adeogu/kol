@@ -35,6 +35,7 @@ export interface Database {
           email: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
+        Relationships: [];
       };
       listings: {
         Row: {
@@ -71,6 +72,7 @@ export interface Database {
           price_per_day: number;
         };
         Update: Partial<Database["public"]["Tables"]["listings"]["Row"]>;
+        Relationships: [];
       };
       bookings: {
         Row: {
@@ -103,6 +105,7 @@ export interface Database {
           grand_total: number;
         };
         Update: Partial<Database["public"]["Tables"]["bookings"]["Row"]>;
+        Relationships: [];
       };
       reviews: {
         Row: {
@@ -123,6 +126,7 @@ export interface Database {
           rating: number;
         };
         Update: Partial<Database["public"]["Tables"]["reviews"]["Row"]>;
+        Relationships: [];
       };
       conversations: {
         Row: {
@@ -139,6 +143,7 @@ export interface Database {
           landowner_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["conversations"]["Row"]>;
+        Relationships: [];
       };
       messages: {
         Row: {
@@ -156,6 +161,7 @@ export interface Database {
           content: string;
         };
         Update: Partial<Database["public"]["Tables"]["messages"]["Row"]>;
+        Relationships: [];
       };
       favorites: {
         Row: {
@@ -169,7 +175,12 @@ export interface Database {
           listing_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["favorites"]["Row"]>;
+        Relationships: [];
       };
     };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
   };
 }

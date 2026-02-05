@@ -1,6 +1,7 @@
 import { PropertyForm } from "@/components/landowner/property-form";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createServerSupabase } from "@/lib/supabase/server";
+import type { Listing } from "@/types";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -53,7 +54,7 @@ export default async function EditPropertyPage({ params }: Props) {
           Update property details
         </h1>
       </div>
-      <PropertyForm initial={listing} />
+      <PropertyForm initial={listing as unknown as Partial<Listing>} />
     </div>
   );
 }

@@ -102,7 +102,7 @@ export function PropertyForm({ initial }: Props) {
 
       const [lng, lat] = bestFeature.center;
       return { lat: Number(lat), lng: Number(lng) };
-    } catch (geocodeError) {
+    } catch {
       setError("Unable to geocode Eircode.");
       return null;
     } finally {

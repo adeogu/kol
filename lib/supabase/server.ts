@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import type { Database } from "./types";
 
 function getEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -16,9 +15,9 @@ export async function createServerSupabase() {
   const { url, anon } = getEnv();
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(url, anon, {
+  return createServerClient(url, anon, {
     cookies: {
-      get(name) {
+      get(name: string) {
         return cookieStore.get(name)?.value;
       },
       set() {
@@ -36,16 +35,16 @@ export async function createRouteSupabase() {
   const { url, anon } = getEnv();
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(url, anon, {
+  return createServerClient(url, anon, {
     cookies: {
-      get(name) {
+      get(name: string) {
         return cookieStore.get(name)?.value;
       },
-      set(name, value, options) {
-        cookieStore.set({ name, value, ...options });
+      set(name: string, value: string, options?: Record<string, unknown>) {
+        cookieStore.set({ name, value, ...(options ?? {}) });
       },
-      remove(name, options) {
-        cookieStore.set({ name, value: "", ...options });
+      remove(name: string, options?: Record<string, unknown>) {
+        cookieStore.set({ name, value: "", ...(options ?? {}) });
       },
     },
   });

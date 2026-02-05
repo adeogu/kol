@@ -116,14 +116,20 @@ export default async function ListingDetailPage({ params }: Props) {
       <div className="space-y-3">
         <p className="text-sm font-semibold text-ink">Recent reviews</p>
         <div className="grid gap-3 md:grid-cols-2">
-          {(reviews ?? []).map((review) => (
+          {(
+            (reviews ?? []) as Array<{
+              id: string;
+              rating: number;
+              comment: string | null;
+            }>
+          ).map((review) => (
             <ReviewCard
               key={review.id}
               rating={review.rating}
               comment={review.comment}
             />
           ))}
-          {reviews?.length === 0 ? (
+          {(reviews ?? []).length === 0 ? (
             <div className="rounded-2xl border border-ink/10 bg-white p-4 text-sm text-ink/60">
               No reviews yet.
             </div>

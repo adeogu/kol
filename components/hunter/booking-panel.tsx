@@ -28,7 +28,14 @@ export function BookingPanel({ listing }: Props) {
         .eq("listing_id", listing.id)
         .neq("status", "CANCELLED");
 
-      if (!active || error || !data) return;
+      const bookingRows =
+        (data as Array<{
+          start_date: string;
+          end_date: string;
+          status: string;
+        }>) ?? [];
+
+      if (!active || error) return;
 
       const dateKeys = new Set<string>();
       const toKey = (value: Date) => {
@@ -38,7 +45,7 @@ export function BookingPanel({ listing }: Props) {
         return `${year}-${month}-${day}`;
       };
 
-      data.forEach((booking) => {
+      bookingRows.forEach((booking) => {
         if (!booking.start_date || !booking.end_date) return;
         let current = new Date(`${booking.start_date}T00:00:00`);
         const end = new Date(`${booking.end_date}T00:00:00`);
@@ -119,7 +126,7 @@ export function BookingPanel({ listing }: Props) {
 
       setStatus("success");
       setMessage("Booking requested. Await landowner confirmation.");
-    } catch (err) {
+    } catch {
       setStatus("error");
       setMessage("Unable to process booking. Please try again.");
     }

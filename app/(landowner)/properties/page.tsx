@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DeleteListingButton } from "@/components/landowner/delete-listing-button";
 import { getPrimaryImageUrl } from "@/lib/listings";
 import { createServerSupabase } from "@/lib/supabase/server";
+import type { Listing } from "@/types";
 
 export default async function PropertiesPage() {
   const supabase = await createServerSupabase();
@@ -9,10 +10,12 @@ export default async function PropertiesPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: listings } = await supabase
+  const { data } = await supabase
     .from("listings")
     .select("*")
     .eq("owner_id", user?.id ?? "");
+
+  const listings = (data as Listing[]) ?? [];
 
   return (
     <div className="space-y-6">
@@ -33,7 +36,7 @@ export default async function PropertiesPage() {
         </Link>
       </div>
       <div className="grid items-stretch gap-4 md:grid-cols-2">
-        {(listings ?? []).map((listing) => {
+        {listings.map((listing) => {
           const image = getPrimaryImageUrl(listing.images);
           return (
             <div

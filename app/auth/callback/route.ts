@@ -18,7 +18,7 @@ export async function GET(request: Request) {
         new URL("/login?message=confirm-error", origin),
       );
     }
-  } catch (err) {
+  } catch {
     return NextResponse.redirect(new URL("/login?message=confirm-error", origin));
   }
 

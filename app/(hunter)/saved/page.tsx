@@ -1,5 +1,6 @@
 import { ListingCard } from "@/components/hunter/listing-card";
 import { createServerSupabase } from "@/lib/supabase/server";
+import type { Listing } from "@/types";
 
 export default async function SavedPage() {
   const supabase = await createServerSupabase();
@@ -12,7 +13,10 @@ export default async function SavedPage() {
     .select("listings(*)")
     .eq("user_id", user?.id ?? "");
 
-  const listings = data?.map((item) => item.listings).filter(Boolean) ?? [];
+  const listings =
+    ((data ?? []) as unknown as Array<{ listings: Listing | null }>)
+      .map((item) => item.listings)
+      .filter(Boolean) as Listing[];
 
   return (
     <div className="space-y-6">

@@ -18,12 +18,13 @@ export function InboxBadge() {
       return;
     }
 
-    const { data: conversations } = await supabase
+    const { data: conversationsData } = await supabase
       .from("conversations")
       .select("id")
       .or(`hunter_id.eq.${user.id},landowner_id.eq.${user.id}`);
 
-    const ids = conversations?.map((item) => item.id) ?? [];
+    const conversations = (conversationsData as Array<{ id: string }>) ?? [];
+    const ids = conversations.map((item) => item.id);
     if (ids.length === 0) {
       setCount(0);
       return;
@@ -41,14 +42,11 @@ export function InboxBadge() {
 
   useRealtime({
     table: "messages",
+    immediate: true,
     onChange: () => {
       loadCount();
     },
   });
-
-  useEffect(() => {
-    loadCount();
-  }, [loadCount]);
 
   useEffect(() => {
     const handleRead = () => {

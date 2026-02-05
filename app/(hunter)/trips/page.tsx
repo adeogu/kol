@@ -1,5 +1,6 @@
 import { ReviewForm } from "@/components/hunter/review-form";
 import { createServerSupabase } from "@/lib/supabase/server";
+import type { Booking } from "@/types";
 
 export default async function TripsPage() {
   const supabase = await createServerSupabase();
@@ -7,11 +8,16 @@ export default async function TripsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: bookings } = await supabase
+  const { data } = await supabase
     .from("bookings")
     .select("*, listings(*)")
     .eq("hunter_id", user?.id ?? "")
     .order("start_date", { ascending: false });
+
+  const bookings =
+    (data as Array<
+      Booking & { listings?: { title?: string | null; owner_id?: string | null } | null }
+    >) ?? [];
 
   return (
     <div className="space-y-6">
@@ -24,7 +30,7 @@ export default async function TripsPage() {
         </h1>
       </div>
       <div className="grid gap-4">
-        {(bookings ?? []).map((booking) => (
+        {bookings.map((booking) => (
           <div
             key={booking.id}
             className="rounded-3xl border border-ink/10 bg-white p-6"
@@ -56,7 +62,7 @@ export default async function TripsPage() {
             </div>
           </div>
         ))}
-        {bookings?.length === 0 ? (
+        {bookings.length === 0 ? (
           <div className="rounded-3xl border border-ink/10 bg-white p-6 text-sm text-ink/60">
             No trips yet. Book a listing to see it here.
           </div>

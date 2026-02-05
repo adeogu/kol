@@ -5,9 +5,10 @@ type Props = {
   table: "messages" | "bookings";
   filter?: string;
   onChange: () => void;
+  immediate?: boolean;
 };
 
-export function useRealtime({ table, filter, onChange }: Props) {
+export function useRealtime({ table, filter, onChange, immediate }: Props) {
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -27,5 +28,13 @@ export function useRealtime({ table, filter, onChange }: Props) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, filter, onChange]);
+  }, [table, filter, onChange, immediate]);
+
+  useEffect(() => {
+    if (!immediate) return;
+    const handle = setTimeout(() => {
+      onChange();
+    }, 0);
+    return () => clearTimeout(handle);
+  }, [immediate, onChange]);
 }

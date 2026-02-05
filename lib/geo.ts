@@ -65,7 +65,7 @@ export const parseCoordinateValue = (value: unknown): LatLng | null => {
         if (Array.isArray(parsed.coordinates)) {
           return { lng: parsed.coordinates[0], lat: parsed.coordinates[1] };
         }
-      } catch (error) {
+      } catch {
         // ignore invalid JSON
       }
     }
@@ -107,7 +107,7 @@ export const formatCoordinateValue = (value: unknown) => {
   if (typeof value === "string") return value;
   try {
     return JSON.stringify(value);
-  } catch (error) {
+  } catch {
     return String(value ?? "");
   }
 };

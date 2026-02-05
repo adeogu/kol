@@ -30,7 +30,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Booking not found." }, { status: 404 });
     }
 
-    const amount = Math.round(Number(booking.grand_total) * 100);
+    const bookingRecord = booking as unknown as {
+      id: string;
+      listing_id: string;
+      start_date: string;
+      end_date: string;
+      grand_total: number;
+      listings?: { title?: string | null } | null;
+    };
+
+    const amount = Math.round(Number(bookingRecord.grand_total) * 100);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
     const session = await stripe.checkout.sessions.create({
@@ -43,21 +52,21 @@ export async function POST(request: Request) {
             currency: "eur",
             unit_amount: amount,
             product_data: {
-              name: booking.listings?.title ?? "HuntStay booking",
-              description: `Booking ${booking.start_date} - ${booking.end_date}`,
+              name: bookingRecord.listings?.title ?? "HuntStay booking",
+              description: `Booking ${bookingRecord.start_date} - ${bookingRecord.end_date}`,
             },
           },
         },
       ],
       success_url: `${appUrl}/trips?status=success`,
-      cancel_url: `${appUrl}/discover/${booking.listing_id}?status=cancelled`,
+      cancel_url: `${appUrl}/discover/${bookingRecord.listing_id}?status=cancelled`,
       metadata: {
-        booking_id: booking.id,
+        booking_id: bookingRecord.id,
       },
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Unable to create checkout session." },
       { status: 500 },

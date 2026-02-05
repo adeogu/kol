@@ -8,18 +8,25 @@ export default async function BookingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: listings } = await supabase
+  const { data: listingsData } = await supabase
     .from("listings")
     .select("id, title")
     .eq("owner_id", user?.id ?? "");
 
-  const listingIds = listings?.map((listing) => listing.id) ?? [];
+  const listings =
+    (listingsData as Array<{ id: string; title: string | null }>) ?? [];
+  const listingIds = listings.map((listing) => listing.id);
 
-  const { data: bookings } = await supabase
+  const { data: bookingsData } = await supabase
     .from("bookings")
     .select("*, listings(title)")
     .in("listing_id", listingIds)
     .order("created_at", { ascending: false });
+
+  const bookings =
+    (bookingsData as Array<
+      Booking & { listings?: { title?: string | null } | null }
+    >) ?? [];
 
   return (
     <div className="space-y-6">
@@ -32,16 +39,16 @@ export default async function BookingsPage() {
         </h1>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        {(bookings ?? []).map((booking) => (
+        {bookings.map((booking) => (
           <BookingRequestCard
             key={booking.id}
             booking={{
               ...(booking as Booking),
-              listing_title: booking.listings?.title,
+              listing_title: booking.listings?.title ?? undefined,
             }}
           />
         ))}
-        {bookings?.length === 0 ? (
+        {bookings.length === 0 ? (
           <div className="rounded-3xl border border-ink/10 bg-white p-6 text-sm text-ink/60">
             No bookings yet.
           </div>
