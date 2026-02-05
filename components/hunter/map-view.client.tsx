@@ -162,6 +162,7 @@ function MapStateReporter({
       keyboard: map.keyboard.enabled(),
     });
   }, [map, markers, onState]);
+  
 
   return null;
 }
