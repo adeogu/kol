@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeleteListingButton } from "@/components/landowner/delete-listing-button";
 import { getPrimaryImageUrl } from "@/lib/listings";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -85,6 +86,10 @@ export default async function PropertiesPage() {
                     >
                       Edit listing
                     </Link>
+                    <DeleteListingButton
+                      listingId={listing.id}
+                      title={listing.title}
+                    />
                   </div>
                 </div>
               </div>
