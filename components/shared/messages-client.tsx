@@ -141,7 +141,7 @@ export function MessagesClient() {
           ))}
           {conversations.length === 0 ? (
             <p className="text-xs text-ink/60">
-              No conversations yet. Message a landowner from a listing.
+              No conversations yet. Start one from a listing or booking.
             </p>
           ) : null}
         </div>

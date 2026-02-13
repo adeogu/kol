@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ensureConversation } from "@/lib/conversations";
 
 type Props = {
   listingId: string;
@@ -46,37 +47,28 @@ export function ListingActions({ listingId, landownerId }: Props) {
 
   const handleMessage = async () => {
     setMessaging(true);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-    const { data: existing } = await supabase
-      .from("conversations")
-      .select("id")
-      .eq("listing_id", listingId)
-      .eq("hunter_id", user.id)
-      .maybeSingle();
+      const { conversationId } = await ensureConversation(supabase, {
+        listingId,
+        hunterId: user.id,
+        landownerId,
+      });
 
-    let conversationId = existing?.id;
-    if (!conversationId) {
-      const { data: created } = await supabase
-        .from("conversations")
-        .insert({
-          listing_id: listingId,
-          hunter_id: user.id,
-          landowner_id: landownerId,
-        })
-        .select("id")
-        .single();
-      conversationId = created?.id;
+      if (conversationId) {
+        router.push(`/messages?conversation=${conversationId}`);
+      }
+    } finally {
+      setMessaging(false);
     }
-
-    if (conversationId) {
-      router.push(`/messages?conversation=${conversationId}`);
-    }
-    setMessaging(false);
   };
 
   return (

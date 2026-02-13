@@ -69,6 +69,7 @@ export async function LandownerDashboard() {
           {pending.map((booking) => (
             <BookingRequestCard
               key={booking.id}
+              currentUserId={user?.id ?? ""}
               booking={{
                 ...(booking as Booking),
                 listing_title: booking.listings?.title ?? undefined,

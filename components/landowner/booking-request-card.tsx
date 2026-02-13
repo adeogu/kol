@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Booking } from "@/types";
+import { StartConversationButton } from "@/components/shared/start-conversation-button";
 
 type Props = {
   booking: Booking & { listing_title?: string; hunter_name?: string };
+  currentUserId: string;
 };
 
-export function BookingRequestCard({ booking }: Props) {
+export function BookingRequestCard({ booking, currentUserId }: Props) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(booking.status);
 
@@ -60,6 +62,15 @@ export function BookingRequestCard({ booking }: Props) {
         >
           Decline
         </button>
+        {currentUserId ? (
+          <StartConversationButton
+            listingId={booking.listing_id}
+            hunterId={booking.hunter_id}
+            landownerId={currentUserId}
+            label="Message hunter"
+            className="rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 transition hover:border-forest hover:text-forest disabled:opacity-60"
+          />
+        ) : null}
       </div>
     </div>
   );
