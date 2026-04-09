@@ -21,10 +21,18 @@ function parseIsoDate(input?: string | null) {
 function fallbackDecision(input: z.infer<typeof bodySchema>) {
   const normalized = (input.declaredLicenseNumber ?? "").trim().toUpperCase();
   const numberLooksValid = /^[A-Z0-9][A-Z0-9\-\/]{5,20}$/.test(normalized);
-  const status: VerificationStatus = numberLooksValid ? "NEEDS_REVIEW" : "REJECTED";
+  const fallbackMode =
+    process.env.LICENSE_VERIFICATION_FALLBACK_MODE ??
+    (process.env.NODE_ENV === "development" ? "verify_valid" : "review");
+  const status: VerificationStatus =
+    numberLooksValid && fallbackMode === "verify_valid"
+      ? "VERIFIED"
+      : numberLooksValid
+        ? "NEEDS_REVIEW"
+        : "REJECTED";
   return {
     status,
-    confidenceScore: numberLooksValid ? 0.45 : 0.2,
+    confidenceScore: status === "VERIFIED" ? 0.65 : numberLooksValid ? 0.45 : 0.2,
     extractedFields: {
       license_number: normalized || null,
       holder_name: null,
@@ -33,12 +41,15 @@ function fallbackDecision(input: z.infer<typeof bodySchema>) {
       county: input.county ?? null,
     },
     reasons:
-      status === "REJECTED"
-        ? ["Unable to validate declared license number format."]
-        : ["Automated review not configured. Marked for manual review."],
+      status === "VERIFIED"
+        ? ["Fallback verification mode accepted a format-valid license number."]
+        : status === "REJECTED"
+          ? ["Unable to validate declared license number format."]
+          : ["Automated review not configured. Marked for manual review."],
     rawResponse: {
       provider: "fallback",
       note: "No external verification service configured.",
+      mode: fallbackMode,
     },
   };
 }

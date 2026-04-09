@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
@@ -12,6 +12,40 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      const supabase = createClient();
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const queryErrorCode =
+        searchParams.get("error_code") ?? hashParams.get("error_code");
+      if (queryErrorCode === "otp_expired") {
+        setError("This reset link has expired. Request a new password reset email.");
+        return;
+      }
+
+      const code = searchParams.get("code");
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setError("Reset link is invalid or expired. Request a new one.");
+        return;
+      }
+
+      setSessionReady(true);
+    };
+
+    bootstrap();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -21,6 +55,11 @@ export default function ResetPasswordPage() {
     }
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+
+    if (!sessionReady) {
+      setError("Open the reset link from your email first.");
       return;
     }
 
@@ -98,12 +137,18 @@ export default function ResetPasswordPage() {
         <button
           className="w-full rounded-full bg-forest px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-forest/30 transition hover:bg-pine disabled:cursor-not-allowed disabled:opacity-70"
           type="submit"
-          disabled={loading || success}
+          disabled={loading || success || !sessionReady}
         >
           {loading ? "Updating..." : "Update password"}
         </button>
       </form>
 
+      <p className="text-sm text-ink/60">
+        Need a new link?{" "}
+        <Link href="/forgot-password" className="font-semibold text-forest">
+          Request again
+        </Link>
+      </p>
       <p className="text-sm text-ink/60">
         Back to{" "}
         <Link href="/login" className="font-semibold text-forest">
