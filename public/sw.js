@@ -1,4 +1,4 @@
-const CACHE_VERSION = "huntstay-v1";
+const CACHE_VERSION = "huntstay-v2";
 const APP_SHELL = `app-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -32,6 +32,7 @@ self.addEventListener("fetch", (event) => {
   // Never cache Supabase/Stripe/API calls in this baseline.
   if (
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/") ||
     url.hostname.includes("supabase.co") ||
     url.hostname.includes("stripe.com")
   ) {
