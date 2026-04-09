@@ -1,0 +1,21 @@
+"use client";
+
+import { useEffect } from "react";
+
+export function PwaRegister() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const register = async () => {
+      try {
+        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      } catch {
+        // Keep app functional when service worker registration fails.
+      }
+    };
+
+    register();
+  }, []);
+
+  return null;
+}

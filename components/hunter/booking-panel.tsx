@@ -90,6 +90,36 @@ export function BookingPanel({ listing }: Props) {
         setMessage("Please log in to book.");
         return;
       }
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      if (profileError || !profile) {
+        setStatus("error");
+        setMessage("Unable to verify your hunter profile right now.");
+        return;
+      }
+      const profileRecord = profile as {
+        license_verified?: boolean | null;
+        license_status?: string | null;
+        license_number?: string | null;
+        first_name?: string | null;
+        last_name?: string | null;
+        county?: string | null;
+        license_expiry_date?: string | null;
+      };
+      const licenseStatus = profileRecord.license_status;
+      const canBook =
+        (licenseStatus ? licenseStatus === "VERIFIED" : false) ||
+        profileRecord.license_verified === true;
+      if (!canBook) {
+        setStatus("error");
+        setMessage(
+          "Your hunting license must be verified before booking. Upload your license in onboarding/profile first.",
+        );
+        return;
+      }
 
       const { data: booking, error } = await supabase
         .from("bookings")
@@ -112,6 +142,19 @@ export function BookingPanel({ listing }: Props) {
         setMessage(error?.message ?? "Unable to create booking.");
         return;
       }
+      await supabase.from("booking_license_snapshots").insert({
+        booking_id: booking.id,
+        hunter_id: user.id,
+        landowner_id: listing.owner_id,
+        license_number: profileRecord.license_number ?? null,
+        holder_name:
+          [profileRecord.first_name, profileRecord.last_name]
+            .filter(Boolean)
+            .join(" ") || null,
+        county: profileRecord.county ?? null,
+        expiry_date: profileRecord.license_expiry_date ?? null,
+        status: "VERIFIED",
+      });
 
       const response = await fetch("/api/payments/create-checkout", {
         method: "POST",

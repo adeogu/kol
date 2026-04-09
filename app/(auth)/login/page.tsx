@@ -67,8 +67,16 @@ function LoginForm() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+            placeholder="********"
           />
+          <div className="mt-2 text-right">
+            <Link
+              href="/forgot-password"
+              className="text-xs font-semibold text-forest transition hover:text-pine"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </div>
         {error ? (
           <p className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -91,6 +99,11 @@ function LoginForm() {
       {message === "confirm-error" ? (
         <p className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
           We could not complete the email confirmation. Please log in manually.
+        </p>
+      ) : null}
+      {message === "password-reset" ? (
+        <p className="rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+          Password updated. Please sign in with your new password.
         </p>
       ) : null}
       <p className="text-sm text-ink/60">

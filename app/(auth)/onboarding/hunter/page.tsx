@@ -37,6 +37,7 @@ export default function HunterOnboardingPage() {
       }
 
       let licenseDocumentUrl: string | null = null;
+      let licenseStatus: "UNVERIFIED" | "PENDING" = "UNVERIFIED";
       if (licenseFile) {
         const filePath = `${user.id}/${Date.now()}-${licenseFile.name}`;
         const { error: uploadError } = await supabase.storage
@@ -53,6 +54,7 @@ export default function HunterOnboardingPage() {
           .from("licenses")
           .getPublicUrl(filePath);
         licenseDocumentUrl = data.publicUrl;
+        licenseStatus = "PENDING";
       }
 
       const { error: updateError } = await supabase
@@ -62,12 +64,30 @@ export default function HunterOnboardingPage() {
           license_number: licenseNumber,
           hunting_preferences: selectedAnimals,
           license_document_url: licenseDocumentUrl,
+          license_status: licenseStatus,
+          license_verified: false,
         })
         .eq("id", user.id);
 
       if (updateError) {
         setError(updateError.message);
         return;
+      }
+      if (licenseDocumentUrl) {
+        try {
+          await fetch("/api/license/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              hunterId: user.id,
+              licenseDocumentUrl,
+              declaredLicenseNumber: licenseNumber || null,
+              county: county || null,
+            }),
+          });
+        } catch {
+          // Best-effort kickoff; profile remains PENDING if call fails.
+        }
       }
 
       router.push("/dashboard");
@@ -151,6 +171,7 @@ export default function HunterOnboardingPage() {
           <input
             type="file"
             accept="image/*,application/pdf"
+            capture="environment"
             className="mt-2 w-full text-sm text-ink/70"
             onChange={(event) => setLicenseFile(event.target.files?.[0] ?? null)}
           />

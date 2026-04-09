@@ -4,6 +4,7 @@ import { createRouteSupabase } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
+  const nextPath = requestUrl.searchParams.get("next");
   const origin = requestUrl.origin;
 
   if (!code) {
@@ -20,6 +21,10 @@ export async function GET(request: Request) {
     }
   } catch {
     return NextResponse.redirect(new URL("/login?message=confirm-error", origin));
+  }
+
+  if (nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")) {
+    return NextResponse.redirect(new URL(nextPath, origin));
   }
 
   return NextResponse.redirect(new URL("/onboarding", origin));

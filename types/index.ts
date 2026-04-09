@@ -1,4 +1,10 @@
 export type ListingStatus = "DRAFT" | "PUBLISHED" | "SUSPENDED";
+export type LicenseStatus =
+  | "UNVERIFIED"
+  | "PENDING"
+  | "VERIFIED"
+  | "REJECTED"
+  | "NEEDS_REVIEW";
 export type BookingStatus =
   | "PENDING"
   | "CONFIRMED"
@@ -30,6 +36,7 @@ export type Booking = {
   id: string;
   listing_id: string;
   hunter_id: string;
+  hunter_license_status?: LicenseStatus | null;
   start_date: string;
   end_date: string;
   total_days: number;

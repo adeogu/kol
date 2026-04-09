@@ -20,6 +20,15 @@ export interface Database {
           hunting_preferences: Json;
           license_number: string | null;
           license_verified: boolean;
+          license_status:
+            | "UNVERIFIED"
+            | "PENDING"
+            | "VERIFIED"
+            | "REJECTED"
+            | "NEEDS_REVIEW"
+            | null;
+          license_verified_at: string | null;
+          license_expiry_date: string | null;
           license_document_url: string | null;
           phone: string | null;
           payout_account_id: string | null;
@@ -126,6 +135,80 @@ export interface Database {
           rating: number;
         };
         Update: Partial<Database["public"]["Tables"]["reviews"]["Row"]>;
+        Relationships: [];
+      };
+      hunter_license_verifications: {
+        Row: {
+          id: string;
+          hunter_id: string;
+          license_document_url: string | null;
+          extracted_license_number: string | null;
+          extracted_holder_name: string | null;
+          extracted_license_type: string | null;
+          extracted_county: string | null;
+          extracted_expiry_date: string | null;
+          confidence_score: number | null;
+          status: "PENDING" | "VERIFIED" | "REJECTED" | "NEEDS_REVIEW";
+          reasons: Json;
+          raw_response: Json;
+          created_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["hunter_license_verifications"]["Row"]
+        > & {
+          hunter_id: string;
+          status: "PENDING" | "VERIFIED" | "REJECTED" | "NEEDS_REVIEW";
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["hunter_license_verifications"]["Row"]
+        >;
+        Relationships: [];
+      };
+      booking_license_snapshots: {
+        Row: {
+          id: string;
+          booking_id: string;
+          hunter_id: string;
+          landowner_id: string;
+          license_number: string | null;
+          holder_name: string | null;
+          license_type: string | null;
+          county: string | null;
+          expiry_date: string | null;
+          status: "VERIFIED" | "REJECTED" | "NEEDS_REVIEW" | "UNVERIFIED";
+          created_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["booking_license_snapshots"]["Row"]
+        > & {
+          booking_id: string;
+          hunter_id: string;
+          landowner_id: string;
+          status: "VERIFIED" | "REJECTED" | "NEEDS_REVIEW" | "UNVERIFIED";
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["booking_license_snapshots"]["Row"]
+        >;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh_key: string;
+          auth_key: string;
+          user_agent: string | null;
+          created_at: string;
+          revoked_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]> & {
+          user_id: string;
+          endpoint: string;
+          p256dh_key: string;
+          auth_key: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]>;
         Relationships: [];
       };
       conversations: {

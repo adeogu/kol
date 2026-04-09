@@ -119,6 +119,7 @@ export default function LandownerOnboardingPage() {
           <input
             type="file"
             accept="image/*,application/pdf"
+            capture="environment"
             className="mt-2 w-full text-sm text-ink/70"
             onChange={(event) =>
               setIdentityFile(event.target.files?.[0] ?? null)

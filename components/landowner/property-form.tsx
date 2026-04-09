@@ -408,6 +408,7 @@ export function PropertyForm({ initial }: Props) {
           type="file"
           multiple
           accept="image/*"
+          capture="environment"
           className="mt-2 w-full text-sm text-ink/70"
           onChange={(event) => setImageFiles(event.target.files)}
         />
