@@ -8,6 +8,8 @@
 
 **Architecture Note**: Built on **Supabase** (PostgreSQL + Auth + Realtime) with **Next.js 14**, enabling separate, tailored experiences for Hunters and Landowners.
 
+**Revision Update (April 2026)**: Product scope now includes a **Progressive Web App (PWA)** experience with install prompt, offline-ready booking/listing views for weak-signal areas, password recovery, push notifications, camera-first uploads, a richer flat-terrain discovery map with nearby POIs, and a dedicated license verification microservice that blocks booking until verification is complete.
+
 ---
 
 ## Table of Contents
@@ -21,6 +23,7 @@
 7. [Monetization](#monetization)
 8. [Development Phases](#development-phases)
 9. [Appendix](#appendix)
+10. [PWA, Offline, Notifications, and Compliance Addendum](#pwa-offline-notifications-and-compliance-addendum)
 
 ---
 
@@ -40,6 +43,9 @@ Create the most trusted platform for hunting land access in Ireland, making it e
 3. **Trust-First**: Verified users, reviews, and identity verification
 4. **Simple Booking**: Calendar-based booking with instant confirmation
 5. **No Subscriptions**: Pay-per-booking only
+6. **Installable PWA**: Add-to-home-screen mobile app experience without app store dependency
+7. **Rural-Ready Offline Access**: Cached booking/listing essentials for weak or no coverage scenarios
+8. **Compliance-First Booking Gate**: Hunters must pass license verification before booking
 
 ---
 
@@ -140,6 +146,33 @@ Create the most trusted platform for hunting land access in Ireland, making it e
 10. Receive Payment (Phase 2)
 ```
 
+### Flow 3: Compliance, Recovery, and Cross-Role Messaging
+
+```
+A. Forgot Password Recovery
+1. User clicks "Forgot Password?" on /login
+2. Enter email and submit reset request
+3. Supabase sends secure reset link
+4. User sets new password and is redirected to /login
+
+B. Mandatory Hunter License Verification Before Booking
+1. Hunter uploads license image during onboarding or before first booking
+2. Main app sends image to license verification microservice
+3. Microservice extracts: license_number, holder_name, expiry_date, license_type
+4. Validation engine checks Irish format and expiry rules
+5. Result stored in Supabase as VERIFIED / REJECTED / NEEDS_REVIEW
+6. Booking button remains disabled until VERIFIED
+
+C. Landowner Access to Compliance Details
+1. When booking request is created, landowner can view verified hunter license summary
+2. Full image remains access-controlled; summary fields are shared with booking context
+
+D. Two-way Conversation Start
+1. Hunter can start conversation from listing or trip
+2. Landowner can start conversation from booking request card
+3. Shared conversation thread opens in /messages for both roles
+```
+
 ---
 
 ## Technical Architecture
@@ -156,15 +189,21 @@ Create the most trusted platform for hunting land access in Ireland, making it e
 | **Realtime** | **Supabase Realtime** | Built-in messaging subscriptions |
 | **File Storage** | **Supabase Storage** | Native image uploads for listings |
 | **Search** | PostgreSQL Full-Text + PostGIS | Advanced location search |
-| **Maps** | Leaflet + OpenStreetMap | Free, no API key needed |
+| **Maps** | Mapbox GL JS (flat terrain style) + POI layers | Flat "game-like" discovery view with nearby services |
+| **PWA** | `next-pwa` + Web App Manifest + Service Worker | Installable app shell, offline caching, home-screen icon |
+| **Notifications** | Web Push API + VAPID keys | Push notifications for booking/message/status events |
+| **Verification Microservice** | Python FastAPI + GPT-4o/Claude Vision | License extraction, validation, decisioning, and audit trail |
 | **Payments** | Stripe (Phase 2) | Standard payouts |
-| **Hosting** | Vercel (Frontend) + Supabase (Backend) | Optimal pairing |
+| **Hosting** | Vercel (Next.js + optional microservice) + Supabase | Fast deploy path with managed Postgres/Auth |
 
 ### Why This Stack?
 - **Supabase replaces 3 services**: Auth (Clerk) + Database (MySQL) + Messaging (WebSocket) → One platform
 - **Row Level Security (RLS)**: Database-level permissions instead of middleware
 - **Role-based routing**: Next.js route groups `(hunter)` vs `(landowner)` for clean separation
 - **Type safety**: Supabase generates TypeScript types from schema
+- **PWA support with minimal overhead**: `next-pwa` handles service worker lifecycle and precaching
+- **Rural usability**: Stale-while-revalidate caching keeps critical booking/listing data available with poor signal
+- **Compliance boundary**: License verification logic isolated in microservice for clearer security and auditability
 
 ### Architecture Diagram
 
@@ -228,12 +267,123 @@ app/
 
 ---
 
+### PWA and Offline Architecture Additions
+
+**PWA Requirements**
+- Users must receive install prompt support ("Add to Home Screen") on supported browsers.
+- Installed app opens in standalone mode (no browser chrome).
+- UI must remain fully responsive for iPhone, tablet, and laptop breakpoints.
+
+**Service Worker Strategy**
+- **Layer 1 (Static precache)**: fonts, icons, CSS, route shells.
+- **Layer 2 (Dynamic cache)**: saved listings, booking summaries, landowner active bookings.
+- Caching policy: `stale-while-revalidate` for read-heavy views.
+- Non-cacheable live features: realtime map search, messaging send/receive, payment submission.
+
+**Offline UX Rules**
+- Show persistent banner: "Offline mode: showing saved data."
+- Disable live actions while offline (new message send, live search, payment).
+- Queue outbound chat drafts locally and retry on reconnect.
+
+**Map Experience Replacement**
+- Replace current map direction with flat-terrain, game-style discovery presentation.
+- Map includes nearby POIs:
+  - Restaurants
+  - Hotels and motels
+  - Sightseeing points
+  - Hunting stores
+- Keep listing markers primary and POIs secondary to avoid clutter.
+
+**Push Notification Scope**
+- Web Push notifications via service worker for:
+  - New booking request
+  - Booking accepted/declined
+  - New message received
+  - License verification result
+
+**Verification Microservice Boundary**
+- Dedicated service receives license image and returns structured decision payload.
+- Main app consumes status asynchronously and enforces booking gate.
+- Uploaded raw license files are deleted after processing retention window.
+
+**Target Architecture (Post-Enhancement)**
+```mermaid
+flowchart LR
+  subgraph Client
+    C1[Browser / PWA Shell]
+    C2[Hunter UI]
+    C3[Landowner UI]
+    C4[Service Worker + Cache]
+    C5[Web Push Subscription]
+    C6[Flat Map + POI Layers]
+  end
+
+  subgraph NextJS
+    N1[Server Components]
+    N2[Server Actions and API Routes]
+    N3[Auth and Stripe Callbacks]
+  end
+
+  subgraph Supabase
+    S1[Auth]
+    S2[(Postgres + RLS)]
+    S3[Storage]
+    S4[Realtime]
+  end
+
+  subgraph Verification
+    V1[License Verification Microservice]
+    V2[Vision AI API]
+    V3[Validation and Decision Engine]
+  end
+
+  subgraph Payments
+    P1[Stripe API]
+    P2[Stripe Webhooks]
+  end
+
+  C2 --> C1
+  C3 --> C1
+  C1 --> C6
+  C1 --> C4
+  C1 --> N1
+  C1 --> N2
+  C5 --> C1
+  N1 --> S1
+  N1 --> S2
+  N1 --> S3
+  N1 --> S4
+  N2 --> V1
+  V1 --> V2
+  V2 --> V3
+  V3 --> S2
+  N2 --> P1
+  P2 --> N3
+  N3 --> S2
+```
+
+---
+
 ## Database Schema (Supabase PostgreSQL)
 
 ### Setup Notes
 - Use **Supabase Dashboard** or **Supabase CLI** to apply migrations
 - Enable **Row Level Security (RLS)** on all tables
 - Enable **Realtime** for `messages` and `bookings` tables
+
+### Additional Schema Requirements (Planned)
+- `profiles`
+  - add `license_status` (`UNVERIFIED`, `PENDING`, `VERIFIED`, `REJECTED`, `NEEDS_REVIEW`)
+  - add `license_verified_at`
+  - add `license_expiry_date`
+- `hunter_license_verifications`
+  - store request id, extracted fields JSON, confidence, status, rejection reasons, reviewed_by, reviewed_at
+- `booking_license_snapshot`
+  - immutable license summary copied at booking creation for landowner visibility and audit
+- `push_subscriptions`
+  - user_id, endpoint, public_key, auth_key, user_agent, created_at, revoked_at
+- `offline_sync_queue` (optional server reconciliation table)
+  - supports replay of queued client actions after reconnection
 
 ```sql
 -- Enable necessary extensions
@@ -678,6 +828,40 @@ export function useMessages(conversationId: string) {
 }
 ```
 
+### Password Recovery API Behavior
+- Login page must expose "Forgot password?" action.
+- On submit, client calls `supabase.auth.resetPasswordForEmail(email, { redirectTo })`.
+- Reset page validates one-time token and enforces strong new password policy.
+- Audit event recorded: `PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_COMPLETED`.
+
+### License Verification Microservice Contract
+
+**Endpoint**
+- `POST /verify-license`
+
+**Input**
+- `user_id`
+- `booking_context` (optional pre-booking intent metadata)
+- `license_image_url` (signed URL from Supabase Storage private bucket)
+
+**Output**
+- `status`: `VERIFIED | REJECTED | NEEDS_REVIEW`
+- `extracted_fields`: `license_number`, `holder_name`, `expiry_date`, `license_type`, `county`
+- `reasons`: validation failures when not verified
+- `confidence_score`: 0-1
+
+**Business Rule**
+- Booking creation server action must hard-fail if hunter `license_status != VERIFIED`.
+
+### Push Notification API Behavior
+- Browser subscribes with Web Push using VAPID public key.
+- Subscription stored per user/device.
+- Events triggering push:
+  - new incoming message
+  - booking accepted or declined
+  - booking reminder
+  - license verification result
+
 ---
 
 ## UI/UX Guidelines
@@ -691,9 +875,10 @@ export function useMessages(conversationId: string) {
 - **Saved** (Favorites list)
 
 **Key UI Elements:**
-- **Map-centric**: Large interactive map taking 60% of dashboard
+- **Flat-terrain discovery map**: Pokemon-style flat map view with listing pins plus nearby POIs
 - **Listing Cards**: Horizontal scroll on mobile, grid on desktop
 - **Booking Flow**: Bottom sheet on mobile, sidebar on desktop
+- **Offline context banner**: Persistent state when showing cached-only data
 - **Color accents**: Forest green primary, amber for CTAs
 
 ### Landowner Interface Design
@@ -709,6 +894,7 @@ export function useMessages(conversationId: string) {
 - **Property Management**: Card-based layout with quick-edit actions
 - **Booking Requests**: Inbox-style list with accept/decline actions
 - **Calendar View**: Full availability management (Google Calendar style)
+- **Camera-first uploads**: Direct capture options for property photos on supported devices
 
 ### Shared Components
 
@@ -767,6 +953,56 @@ export default async function RootLayout({ children }) {
 - **Behavior-Driven Development (BDD)**: Use Given/When/Then format for clarity
 - **Edge-First Design**: Account for failure modes before success paths
 
+### Coverage and CI Requirements
+- **Main application minimum coverage**: 100% lines, branches, functions, and statements.
+- **Verification microservice minimum coverage**: 100% lines, branches, functions, and statements.
+- Coverage must be enforced in CI and fail pull requests below threshold.
+- GitHub Actions must publish:
+  - coverage summary in job logs
+  - artifact upload (`coverage/`)
+  - PR status check named `coverage-gate`
+
+### GitHub Actions (Coverage Gate Blueprint)
+```yaml
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  web-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test -- --coverage
+      - run: pnpm coverage:check -- --lines 100 --branches 100 --functions 100 --statements 100
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: coverage
+
+  verification-service-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r services/license-verification/requirements.txt
+      - run: pytest services/license-verification --cov=services/license-verification --cov-branch --cov-fail-under=100
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verification-coverage
+          path: .coverage
+```
+
 ---
 
 ## 1. Critical User Flows & Test Cases
@@ -811,6 +1047,26 @@ Edge Cases:
   - JWT expired: Redirect to /login with message "Session expired. Please sign in again"
   - Profile missing (data integrity issue): Redirect to onboarding with auth.user metadata pre-filled
   - Role is NULL: Force onboarding completion before app access
+```
+
+```
+Test Case: AUTH-005
+Title: Forgot password and reset completion
+Given: Registered user on /login without valid session
+When:
+  1. User clicks "Forgot password?"
+  2. User submits registered email
+  3. User follows reset link from email
+  4. User sets new password and confirms
+Then:
+  - Reset token validated exactly once
+  - Password updated successfully
+  - User redirected to /login with message "Password updated. Please sign in."
+
+Edge Cases:
+  - Unknown email: show generic success message (no account enumeration)
+  - Expired token: show "Reset link expired" and allow resend
+  - Weak password: block submit with policy guidance
 ```
 
 #### Test Suite: Protected Routes
@@ -1124,7 +1380,7 @@ When:
 
 Edge Cases:
   - Map area has no listings: Show empty state "No properties in this area. Try zooming out."
-  - Map fails to load (Leaflet error): Show list view fallback with toggle "Switch to List View"
+  - Map fails to load (vector style error): Show list view fallback with toggle "Switch to List View"
   - Mobile touch gestures: Pinch to zoom, double-tap to zoom, pan with single finger
 ```
 
@@ -1155,6 +1411,28 @@ Then:
 Edge Cases:
   - Invalid price range (max < min): Auto-correct min to max-10
   - URL sharing with invalid params: Ignore invalid, apply valid, show toast "Some filters were invalid"
+```
+
+```
+Test Case: SEARCH-003
+Title: Flat map POI overlays and hierarchy
+Given: Hunter on flat-terrain map style with POI layers enabled
+When:
+  1. User toggles nearby POIs
+  Then:
+    - Restaurants, Hotels/Motels, Sightseeing, Hunting Stores layers appear
+    - Listing markers remain visually dominant over POI markers
+    - POI markers never block listing marker click targets
+
+  2. User clicks POI marker
+  Then:
+    - POI info card opens
+    - No booking CTA shown on POI cards
+    - "Back to listings" action returns focus to listing cards
+
+Edge Cases:
+  - Too many POIs: cluster at low zoom
+  - Slow network: POI layer loads progressively without blocking listing map
 ```
 
 ---
@@ -1279,9 +1557,9 @@ Expected: Account locked for 15 minutes, email sent to user
 ## 4. Mobile-Responsive Specifications
 
 ### Breakpoints
-- **Mobile**: < 640px (Single column, bottom sheets, hamburger menu)
-- **Tablet**: 640px-1024px (2-column grid, side drawer)
-- **Desktop**: > 1024px (Full layout, hover states enabled)
+- **Mobile (iPhone priority)**: < 640px (single column, bottom sheets, install prompt UX)
+- **Tablet (iPad priority)**: 640px-1024px (2-column grid, side drawer, touch-optimized cards)
+- **Desktop/Laptop**: > 1024px (full layout, hover states enabled)
 
 ### Mobile-Specific Interactions
 ```
@@ -1299,6 +1577,13 @@ Behavior:
   - "Pull to refresh" loads older messages
   - Image uploads: Direct camera access or gallery
   - Push notifications for new messages (request permission on first message)
+
+Component: PWA Install + Offline
+Behavior:
+  - Show install prompt entry point after meaningful engagement
+  - Add app icon and splash experience from manifest
+  - If offline: show cached booking/listing detail screens
+  - If offline on live-only action: disable with clear "Requires internet" message
 ```
 
 ### Touch Targets
@@ -1371,7 +1656,7 @@ When implementing features, use these test prompts with AI:
 |------|-------|--------------|
 | 1 | **Setup + Auth** | Supabase project, schema migration, role-based routing, onboarding flows |
 | 2 | **Landowner Experience** | Property creation, image upload, calendar management, landowner dashboard |
-| 3 | **Hunter Experience** | Map integration, search/filters, booking flow, hunter dashboard |
+| 3 | **Hunter Experience** | Flat-terrain map integration, search/filters, booking flow, hunter dashboard |
 | 4 | **Messaging + Polish** | Realtime chat, reviews, responsive design, RLS policies |
 
 **Phase 1 Definition of Done:**
@@ -1388,7 +1673,14 @@ When implementing features, use these test prompts with AI:
 | Week | Focus | Deliverables |
 |------|-------|--------------|
 | 5 | **Stripe Integration** | Hunter payments, landowner payouts, service fees |
-| 6 | **Verification** | License upload for hunters, identity verification for landowners |
+| 6 | **Verification Service** | License upload, AI extraction + validation microservice, booking gate enforcement, landowner license snapshot |
+
+### Phase 3: PWA, Offline, and Production QA (Weeks 7-8)
+
+| Week | Focus | Deliverables |
+|------|-------|--------------|
+| 7 | **PWA + Offline** | Manifest, service worker, install prompt UX, offline cached booking/listing views, offline banners |
+| 8 | **Quality + Notifications** | Web push subscriptions, push delivery events, 100% coverage gates in GitHub Actions for web and microservice |
 
 ---
 
@@ -1471,6 +1763,28 @@ huntstay/
         └── 002_rls_policies.sql
 ```
 
+### Additional Directories for New Scope
+
+```text
+public/
+  manifest.json
+  icons/
+    icon-192.png
+    icon-512.png
+  offline.html
+
+services/
+  license-verification/
+    app/main.py
+    app/validators.py
+    tests/
+    requirements.txt
+
+.github/
+  workflows/
+    ci.yml
+```
+
 ---
 
 ## Environment Variables
@@ -1490,6 +1804,18 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Map + PWA
+NEXT_PUBLIC_MAPBOX_TOKEN=pk_...
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+
+# Verification Microservice
+LICENSE_VERIFICATION_SERVICE_URL=https://license-verify.huntstay.ie
+LICENSE_VERIFICATION_SERVICE_TOKEN=...
+OPENAI_API_KEY=...
+# or
+ANTHROPIC_API_KEY=...
 ```
 
 ---
@@ -1504,5 +1830,75 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ---
 
-*Document Version: 4.0 (Supabase + Dual Interface Edition)*
-*Last Updated: February 2025*
+## PWA, Offline, Notifications, and Compliance Addendum
+
+### 1) Progressive Web App (PWA) Product Decision
+- HuntStay will ship as a web-first PWA.
+- Entry path remains `HuntStay.ie` with no app store distribution requirement.
+- Users can add to home screen and launch in standalone mode.
+- UX must support iPhone, tablet, and laptop layouts as first-class experiences.
+
+### 2) Forgot Password Requirement
+- `/login` must include `Forgot password?` CTA.
+- Password reset flow must use secure email token flow via Supabase Auth.
+- Reset responses must avoid account enumeration.
+
+### 3) Offline Support Scope
+- Service worker caches static shell assets for fast startup.
+- Dynamic caching covers:
+  - hunter saved listings and listing details
+  - booking details needed in the field
+  - landowner active bookings summary
+- Offline mode is partial, not full:
+  - supported: view cached content
+  - not supported: live map search, sending messages, new payments
+- UI must clearly indicate offline/read-only states.
+
+### 4) Discovery Map Direction
+- Replace the current baseline map style with flat-terrain, game-like visual language.
+- Keep hunting listings primary and visible at all zoom levels.
+- Add secondary nearby context layers:
+  - restaurants
+  - hotels/motels
+  - sightseeing points
+  - hunting stores
+
+### 5) Test Coverage and CI Gate
+- Target is explicitly 100% coverage for:
+  - main web application
+  - license verification microservice
+- Coverage must be enforced by GitHub Actions as required PR checks.
+- Coverage artifacts must be retained for supervisor/examiner review.
+
+### 6) Web Push Notifications
+- Implement Web Push API with VAPID keys.
+- Trigger events:
+  - new message
+  - booking status changes
+  - reminders
+  - license verification outcome
+
+### 7) Camera Access for Uploads
+- Mobile web upload controls must expose camera and gallery input options.
+- Required for:
+  - hunter license upload
+  - landowner property photo upload
+
+### 8) License Verification Microservice (Compliance Critical)
+- Booking is blocked unless hunter license status is `VERIFIED`.
+- Verification flow:
+  1. Hunter uploads license image.
+  2. Main app calls microservice.
+  3. Microservice calls vision-capable AI API (GPT-4o or Claude).
+  4. Extracts: license number, name, expiry date, license type, county.
+  5. Validation engine checks Irish format and expiry/business rules.
+  6. Persists decision in Supabase and returns status to app.
+- Landowner receives license summary with booking context for compliance transparency.
+- Suggested deployment:
+  - Next.js app on Vercel
+  - verification microservice on Vercel Functions or container host (Render/Fly) if longer runtime is required
+
+---
+
+*Document Version: 5.0 (PWA + Offline + Compliance Edition)*
+*Last Updated: April 2026*
