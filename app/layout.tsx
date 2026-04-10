@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { OfflineBanner } from "@/components/shared/offline-banner";
 import { PwaRegister } from "@/components/shared/pwa-register";
+import { RecoveryLinkRedirect } from "@/components/shared/recovery-link-redirect";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${sora.variable} ${fraunces.variable} antialiased`}>
+        <RecoveryLinkRedirect />
         <PwaRegister />
         <OfflineBanner />
         {children}

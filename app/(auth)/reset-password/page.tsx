@@ -28,8 +28,24 @@ export default function ResetPasswordPage() {
       }
 
       const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const flowType = searchParams.get("type");
+
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
+        const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (codeError) {
+          setError("Reset link is invalid or expired. Request a new one.");
+          return;
+        }
+      } else if (tokenHash && flowType === "recovery") {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        });
+        if (verifyError) {
+          setError("Reset link is invalid or expired. Request a new one.");
+          return;
+        }
       }
 
       const {
