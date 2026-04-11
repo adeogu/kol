@@ -83,6 +83,7 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
     "idle" | "locating" | "ready" | "denied" | "unavailable"
   >("idle");
   const mapRef = useRef<L.Map | null>(null);
+  const locateTimeoutRef = useRef<number | null>(null);
 
   const markers = useMemo(
     () =>
@@ -120,9 +121,10 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
   useEffect(() => {
     if (!bounds) return;
 
-    const controller = new AbortController();
+    let active = true;
     const timeout = window.setTimeout(async () => {
       try {
+        if (!active) return;
         setPoiLoading(true);
         const params = new URLSearchParams({
           south: String(bounds.south),
@@ -133,9 +135,9 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
         });
 
         const response = await fetch(`/api/poi/search?${params.toString()}`, {
-          signal: controller.signal,
           cache: "no-store",
         });
+        if (!active) return;
         if (!response.ok) {
           throw new Error("POI request failed.");
         }
@@ -144,24 +146,24 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
           pois?: PointOfInterest[];
           source?: "seed" | "overpass";
         };
-        if (controller.signal.aborted) return;
+        if (!active) return;
 
         const pois = Array.isArray(payload.pois) ? payload.pois : [];
         setPoiMarkers(pois.length > 0 ? pois : fallbackPois);
         setPoiSource(payload.source === "overpass" ? "overpass" : "seed");
       } catch {
-        if (controller.signal.aborted) return;
+        if (!active) return;
         setPoiMarkers(fallbackPois);
         setPoiSource("seed");
       } finally {
-        if (!controller.signal.aborted) {
+        if (active) {
           setPoiLoading(false);
         }
       }
     }, 250);
 
     return () => {
-      controller.abort();
+      active = false;
       window.clearTimeout(timeout);
     };
   }, [bounds, categoriesKey, fallbackPois]);
@@ -220,6 +222,22 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
     onDebug(debugInfo);
   }, [debugInfo, onDebug]);
 
+  useEffect(() => {
+    return () => {
+      if (locateTimeoutRef.current !== null) {
+        window.clearTimeout(locateTimeoutRef.current);
+        locateTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  const clearLocateTimeout = () => {
+    if (locateTimeoutRef.current !== null) {
+      window.clearTimeout(locateTimeoutRef.current);
+      locateTimeoutRef.current = null;
+    }
+  };
+
   const locateMe = () => {
     if (!navigator.geolocation) {
       setLocationStatus("unavailable");
@@ -227,24 +245,44 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
     }
     if (!mapRef.current) return;
     setLocationStatus("locating");
-    mapRef.current.locate({
-      setView: true,
-      maxZoom: 13,
-      enableHighAccuracy: true,
-      timeout: 10000,
-    });
+    clearLocateTimeout();
+    locateTimeoutRef.current = window.setTimeout(() => {
+      setLocationStatus("unavailable");
+    }, 12000);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        clearLocateTimeout();
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(location);
+        setLocationStatus("ready");
+        mapRef.current?.setView(
+          [location.lat, location.lng],
+          Math.max(mapRef.current.getZoom(), 13),
+        );
+      },
+      (error) => {
+        clearLocateTimeout();
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationStatus("denied");
+          return;
+        }
+        setLocationStatus("unavailable");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
   };
 
   const handleMapReady = useCallback((map: L.Map) => {
     mapRef.current = map;
   }, []);
-
-  const handleUserLocationChange = useCallback(
-    (location: { lat: number; lng: number }) => {
-      setUserLocation(location);
-    },
-    [],
-  );
 
   return (
     <div className="relative h-[420px] w-full overflow-hidden rounded-3xl border border-ink/10">
@@ -267,8 +305,6 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
           onBoundsChange={setBounds}
           onState={setMapState}
           onMapReady={handleMapReady}
-          onUserLocationChange={handleUserLocationChange}
-          onLocationStatusChange={setLocationStatus}
         />
         <TileLayer attribution={mapTiles.attribution} url={mapTiles.url} />
 
@@ -338,7 +374,11 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
         onClick={locateMe}
         className="absolute right-3 top-3 z-[500] rounded-full border border-ink/15 bg-white/95 px-3 py-2 text-xs font-semibold text-ink shadow"
       >
-        {locationStatus === "locating" ? "Locating..." : "Locate me"}
+        {locationStatus === "locating"
+          ? "Locating..."
+          : locationStatus === "ready"
+            ? "Re-center me"
+            : "Locate me"}
       </button>
     </div>
   );
@@ -368,17 +408,11 @@ function MapStateReporter({
   onState,
   onBoundsChange,
   onMapReady,
-  onUserLocationChange,
-  onLocationStatusChange,
   markers,
 }: {
   onState: (state: MapDebugInfo["mapState"] | null) => void;
   onBoundsChange: (bounds: PoiBounds) => void;
   onMapReady: (map: L.Map) => void;
-  onUserLocationChange: (location: { lat: number; lng: number }) => void;
-  onLocationStatusChange: (
-    status: "idle" | "locating" | "ready" | "denied" | "unavailable",
-  ) => void;
   markers: Array<{ coords: { lat: number; lng: number } | null }>;
 }) {
   const map = useMap();
@@ -393,15 +427,6 @@ function MapStateReporter({
       onBoundsChange(mapBoundsSnapshot(map));
       onState(mapStateSnapshot(map));
     },
-    locationfound: (event) => {
-      onUserLocationChange({ lat: event.latlng.lat, lng: event.latlng.lng });
-      onLocationStatusChange("ready");
-      onBoundsChange(mapBoundsSnapshot(map));
-      onState(mapStateSnapshot(map));
-    },
-    locationerror: () => {
-      onLocationStatusChange("denied");
-    },
   });
 
   useEffect(() => {
@@ -411,10 +436,9 @@ function MapStateReporter({
     map.touchZoom.enable();
     map.doubleClickZoom.enable();
     map.keyboard.enable();
-    onLocationStatusChange("idle");
     onState(mapStateSnapshot(map));
     onBoundsChange(mapBoundsSnapshot(map));
-  }, [map, onBoundsChange, onMapReady, onState, onLocationStatusChange]);
+  }, [map, onBoundsChange, onMapReady, onState]);
 
   useEffect(() => {
     if (centeredRef.current || markers.length === 0) return;
