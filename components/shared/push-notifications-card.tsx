@@ -22,6 +22,8 @@ export function PushNotificationsCard() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const vapidPublicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY ?? "";
+  const isDevelopment = process.env.NODE_ENV !== "production";
+  const enableSwInDev = process.env.NEXT_PUBLIC_ENABLE_SW_IN_DEV === "true";
 
   useEffect(() => {
     const init = async () => {
@@ -35,14 +37,21 @@ export function PushNotificationsCard() {
       setPermission(Notification.permission);
       const registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
-        setStatus("Push service worker is not active yet.");
+        if (isDevelopment && !enableSwInDev) {
+          setStatus(
+            "Push service worker is disabled in local dev. Set NEXT_PUBLIC_ENABLE_SW_IN_DEV=true and restart pnpm dev.",
+          );
+        } else {
+          setStatus("Push service worker is not active yet. Refresh and try again.");
+        }
         return;
       }
+      setStatus(null);
       const existing = await registration.pushManager.getSubscription();
       setSubscribed(Boolean(existing));
     };
     init();
-  }, []);
+  }, [enableSwInDev, isDevelopment]);
 
   const readyToEnable = useMemo(
     () => supported && isOnline && permission !== "denied" && Boolean(vapidPublicKey),
@@ -69,7 +78,13 @@ export function PushNotificationsCard() {
 
       const registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
-        setStatus("Push service worker is not active yet.");
+        if (isDevelopment && !enableSwInDev) {
+          setStatus(
+            "Push service worker is disabled in local dev. Turn on NEXT_PUBLIC_ENABLE_SW_IN_DEV and restart dev server.",
+          );
+        } else {
+          setStatus("Push service worker is not active yet.");
+        }
         return;
       }
       const subscription = await registration.pushManager.subscribe({
@@ -156,6 +171,13 @@ export function PushNotificationsCard() {
       {!vapidPublicKey ? (
         <p className="rounded-xl border border-ink/15 bg-ink/5 px-3 py-2 text-xs text-ink/60">
           Push is not configured yet (`NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` missing).
+        </p>
+      ) : null}
+      {isDevelopment && !enableSwInDev ? (
+        <p className="rounded-xl border border-amber-300/40 bg-amber-100/70 px-3 py-2 text-xs text-amber-900">
+          Dev note: service workers are off by default. Set{" "}
+          <code>NEXT_PUBLIC_ENABLE_SW_IN_DEV=true</code>, restart{" "}
+          <code>pnpm dev</code>, then hard refresh.
         </p>
       ) : null}
       {status ? (

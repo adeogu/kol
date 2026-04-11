@@ -3,12 +3,23 @@ import { z } from "zod";
 import { sendPushToUser } from "@/lib/push/server";
 import { createRouteSupabase } from "@/lib/supabase/server";
 
-const bodySchema = z.object({
-  hunterId: z.string().uuid(),
-  licenseDocumentUrl: z.string().url(),
-  declaredLicenseNumber: z.string().nullable().optional(),
-  county: z.string().nullable().optional(),
-});
+const bodySchema = z
+  .object({
+    hunterId: z.string().uuid(),
+    licenseDocumentUrl: z.string().url().nullable().optional(),
+    declaredLicenseNumber: z.string().nullable().optional(),
+    county: z.string().nullable().optional(),
+    useDemoBypass: z.boolean().optional().default(false),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.useDemoBypass && !value.licenseDocumentUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["licenseDocumentUrl"],
+        message: "A license document URL is required unless demo bypass is enabled.",
+      });
+    }
+  });
 
 type VerificationStatus = "VERIFIED" | "REJECTED" | "NEEDS_REVIEW";
 
@@ -17,6 +28,13 @@ function parseIsoDate(input?: string | null) {
   const date = new Date(input);
   if (Number.isNaN(date.getTime())) return null;
   return date.toISOString().slice(0, 10);
+}
+
+function isDemoBypassAllowed() {
+  const configured = process.env.LICENSE_VERIFICATION_ALLOW_DEMO_BYPASS;
+  if (configured === "true") return true;
+  if (configured === "false") return false;
+  return process.env.NODE_ENV === "development";
 }
 
 function fallbackDecision(input: z.infer<typeof bodySchema>) {
@@ -51,6 +69,31 @@ function fallbackDecision(input: z.infer<typeof bodySchema>) {
       provider: "fallback",
       note: "No external verification service configured.",
       mode: fallbackMode,
+    },
+  };
+}
+
+function demoBypassDecision(input: z.infer<typeof bodySchema>) {
+  const normalized = (input.declaredLicenseNumber ?? "").trim().toUpperCase();
+  const oneYearAhead = new Date();
+  oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+  return {
+    status: "VERIFIED" as const,
+    confidenceScore: 0.99,
+    extractedFields: {
+      license_number: normalized || "DEMO-HUNT-0001",
+      holder_name: "Demo Hunter",
+      expiry_date: oneYearAhead.toISOString().slice(0, 10),
+      license_type: "GAME",
+      county: input.county ?? "Westmeath",
+    },
+    reasons: [
+      "Demo bypass enabled for local testing.",
+      "Do not use in production.",
+    ],
+    rawResponse: {
+      provider: "demo-bypass",
+      note: "Verification was bypassed in development mode.",
     },
   };
 }
@@ -132,7 +175,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const decision = await callVerificationService(parsed.data);
+  if (parsed.data.useDemoBypass && !isDemoBypassAllowed()) {
+    return NextResponse.json(
+      { error: "Demo bypass is not allowed in this environment." },
+      { status: 403 },
+    );
+  }
+
+  const decision = parsed.data.useDemoBypass
+    ? demoBypassDecision(parsed.data)
+    : await callVerificationService(parsed.data);
   const expiryDate = parseIsoDate(decision.extractedFields.expiry_date);
 
   const { error: profileError } = await supabase
@@ -158,7 +210,7 @@ export async function POST(request: Request) {
 
   await supabase.from("hunter_license_verifications").insert({
     hunter_id: parsed.data.hunterId,
-    license_document_url: parsed.data.licenseDocumentUrl,
+    license_document_url: parsed.data.licenseDocumentUrl ?? null,
     extracted_license_number: decision.extractedFields.license_number,
     extracted_holder_name: decision.extractedFields.holder_name,
     extracted_license_type: decision.extractedFields.license_type,

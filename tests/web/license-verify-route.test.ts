@@ -65,6 +65,7 @@ describe("license verify route", () => {
   const originalEndpoint = process.env.LICENSE_VERIFICATION_SERVICE_URL;
   const originalToken = process.env.LICENSE_VERIFICATION_SERVICE_TOKEN;
   const originalMode = process.env.LICENSE_VERIFICATION_FALLBACK_MODE;
+  const originalDemoBypass = process.env.LICENSE_VERIFICATION_ALLOW_DEMO_BYPASS;
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
@@ -74,6 +75,7 @@ describe("license verify route", () => {
     delete process.env.LICENSE_VERIFICATION_SERVICE_URL;
     delete process.env.LICENSE_VERIFICATION_SERVICE_TOKEN;
     delete process.env.LICENSE_VERIFICATION_FALLBACK_MODE;
+    delete process.env.LICENSE_VERIFICATION_ALLOW_DEMO_BYPASS;
     process.env.NODE_ENV = "test";
   });
 
@@ -81,6 +83,7 @@ describe("license verify route", () => {
     process.env.LICENSE_VERIFICATION_SERVICE_URL = originalEndpoint;
     process.env.LICENSE_VERIFICATION_SERVICE_TOKEN = originalToken;
     process.env.LICENSE_VERIFICATION_FALLBACK_MODE = originalMode;
+    process.env.LICENSE_VERIFICATION_ALLOW_DEMO_BYPASS = originalDemoBypass;
     process.env.NODE_ENV = originalNodeEnv;
     vi.unstubAllGlobals();
   });
@@ -107,6 +110,18 @@ describe("license verify route", () => {
       }),
     );
     expect(response.status).toBe(401);
+  });
+
+  it("returns 400 when document URL is missing without demo bypass", async () => {
+    createRouteSupabaseMock.mockResolvedValue(createSupabase());
+    const response = await POST(
+      new Request("http://localhost/api/license/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody({ licenseDocumentUrl: null })),
+      }),
+    );
+    expect(response.status).toBe(400);
   });
 
   it("returns 403 when user does not match hunter", async () => {
@@ -170,6 +185,82 @@ describe("license verify route", () => {
       expect.objectContaining({ tag: "license-verified" }),
     );
     expect(supabase.__mocks.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses demo bypass when enabled", async () => {
+    process.env.LICENSE_VERIFICATION_ALLOW_DEMO_BYPASS = "true";
+    const supabase = createSupabase();
+    createRouteSupabaseMock.mockResolvedValue(supabase);
+
+    const response = await POST(
+      new Request("http://localhost/api/license/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          requestBody({
+            licenseDocumentUrl: null,
+            declaredLicenseNumber: "demo-12345",
+            useDemoBypass: true,
+          }),
+        ),
+      }),
+    );
+    const payload = (await response.json()) as { status: string };
+
+    expect(response.status).toBe(200);
+    expect(payload.status).toBe("VERIFIED");
+    expect(supabase.__mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        license_document_url: null,
+      }),
+    );
+  });
+
+  it("returns 403 when demo bypass is disabled", async () => {
+    process.env.LICENSE_VERIFICATION_ALLOW_DEMO_BYPASS = "false";
+    createRouteSupabaseMock.mockResolvedValue(createSupabase());
+
+    const response = await POST(
+      new Request("http://localhost/api/license/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          requestBody({
+            useDemoBypass: true,
+            licenseDocumentUrl: null,
+          }),
+        ),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("allows demo bypass by default in development", async () => {
+    process.env.NODE_ENV = "development";
+    delete process.env.LICENSE_VERIFICATION_ALLOW_DEMO_BYPASS;
+    const supabase = createSupabase();
+    createRouteSupabaseMock.mockResolvedValue(supabase);
+
+    const response = await POST(
+      new Request("http://localhost/api/license/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          requestBody({
+            useDemoBypass: true,
+            licenseDocumentUrl: null,
+          }),
+        ),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(supabase.__mocks.profileUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        license_status: "VERIFIED",
+      }),
+    );
   });
 
   it("fallback uses development default verify_valid when mode missing", async () => {

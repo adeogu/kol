@@ -31,6 +31,77 @@ export async function LandownerDashboard() {
     >) ?? [];
 
   const pending = bookings.filter((item) => item.status === "PENDING");
+  const pendingIds = pending.map((booking) => booking.id);
+  const pendingHunterIds = Array.from(
+    new Set(pending.map((booking) => booking.hunter_id)),
+  );
+
+  const { data: pendingHuntersData } =
+    pendingHunterIds.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", pendingHunterIds)
+      : {
+          data: [] as Array<{
+            id: string;
+            first_name: string | null;
+            last_name: string | null;
+          }>,
+        };
+
+  const { data: pendingSnapshotsData } =
+    pendingIds.length > 0
+      ? await supabase
+          .from("booking_license_snapshots")
+          .select(
+            "booking_id, license_number, holder_name, license_type, county, expiry_date, status, license_document_url",
+          )
+          .in("booking_id", pendingIds)
+      : {
+          data: [] as Array<{
+            booking_id: string;
+            license_number: string | null;
+            holder_name: string | null;
+            license_type: string | null;
+            county: string | null;
+            expiry_date: string | null;
+            status: string;
+            license_document_url: string | null;
+          }>,
+        };
+
+  const pendingHuntersById = new Map(
+    ((pendingHuntersData ?? []) as Array<{
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+    }>).map((hunter) => [hunter.id, hunter]),
+  );
+  const pendingSnapshotsByBookingId = new Map(
+    ((pendingSnapshotsData ?? []) as Array<{
+      booking_id: string;
+      license_number: string | null;
+      holder_name: string | null;
+      license_type: string | null;
+      county: string | null;
+      expiry_date: string | null;
+      status: string;
+      license_document_url: string | null;
+    }>).map((snapshot) => [snapshot.booking_id, snapshot]),
+  );
+  const pendingCards = pending.map((booking) => {
+    const hunter = pendingHuntersById.get(booking.hunter_id);
+    const hunterName =
+      [hunter?.first_name, hunter?.last_name].filter(Boolean).join(" ") ||
+      undefined;
+    const snapshot = pendingSnapshotsByBookingId.get(booking.id);
+    return {
+      booking,
+      hunterName,
+      snapshot,
+    };
+  });
 
   const totalEarnings = bookings.reduce((sum, booking) => {
     if (booking.status === "COMPLETED") {
@@ -66,14 +137,28 @@ export async function LandownerDashboard() {
               No pending requests. New bookings will appear here.
             </div>
           ) : null}
-          {pending.map((booking) => (
+          {pendingCards.map(({ booking, hunterName, snapshot }) => (
             <BookingRequestCard
               key={booking.id}
               currentUserId={user?.id ?? ""}
               booking={{
                 ...(booking as Booking),
                 listing_title: booking.listings?.title ?? undefined,
+                hunter_name: hunterName,
               }}
+              licenseSnapshot={
+                snapshot
+                  ? {
+                      license_number: snapshot.license_number,
+                      holder_name: snapshot.holder_name,
+                      license_type: snapshot.license_type,
+                      county: snapshot.county,
+                      expiry_date: snapshot.expiry_date,
+                      status: snapshot.status,
+                      license_document_url: snapshot.license_document_url,
+                    }
+                  : null
+              }
             />
           ))}
         </div>

@@ -27,6 +27,68 @@ export default async function BookingsPage() {
     (bookingsData as Array<
       Booking & { listings?: { title?: string | null } | null }
     >) ?? [];
+  const bookingIds = bookings.map((booking) => booking.id);
+  const hunterIds = Array.from(new Set(bookings.map((booking) => booking.hunter_id)));
+
+  const { data: huntersData } =
+    hunterIds.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", hunterIds)
+      : { data: [] as Array<{ id: string; first_name: string | null; last_name: string | null }> };
+
+  const { data: snapshotsData } =
+    bookingIds.length > 0
+      ? await supabase
+          .from("booking_license_snapshots")
+          .select(
+            "booking_id, license_number, holder_name, license_type, county, expiry_date, status, license_document_url",
+          )
+          .in("booking_id", bookingIds)
+      : { data: [] as Array<{
+          booking_id: string;
+          license_number: string | null;
+          holder_name: string | null;
+          license_type: string | null;
+          county: string | null;
+          expiry_date: string | null;
+          status: string;
+          license_document_url: string | null;
+        }> };
+
+  const huntersById = new Map(
+    ((huntersData ?? []) as Array<{
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+    }>).map((hunter) => [hunter.id, hunter]),
+  );
+
+  const snapshotsByBookingId = new Map(
+    ((snapshotsData ?? []) as Array<{
+      booking_id: string;
+      license_number: string | null;
+      holder_name: string | null;
+      license_type: string | null;
+      county: string | null;
+      expiry_date: string | null;
+      status: string;
+      license_document_url: string | null;
+    }>).map((snapshot) => [snapshot.booking_id, snapshot]),
+  );
+  const bookingCards = bookings.map((booking) => {
+    const hunter = huntersById.get(booking.hunter_id);
+    const hunterName =
+      [hunter?.first_name, hunter?.last_name].filter(Boolean).join(" ") ||
+      undefined;
+    const snapshot = snapshotsByBookingId.get(booking.id);
+    return {
+      booking,
+      hunterName,
+      snapshot,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -39,14 +101,28 @@ export default async function BookingsPage() {
         </h1>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        {bookings.map((booking) => (
+        {bookingCards.map(({ booking, hunterName, snapshot }) => (
           <BookingRequestCard
             key={booking.id}
             currentUserId={user?.id ?? ""}
             booking={{
               ...(booking as Booking),
               listing_title: booking.listings?.title ?? undefined,
+              hunter_name: hunterName,
             }}
+            licenseSnapshot={
+              snapshot
+                ? {
+                    license_number: snapshot.license_number,
+                    holder_name: snapshot.holder_name,
+                    license_type: snapshot.license_type,
+                    county: snapshot.county,
+                    expiry_date: snapshot.expiry_date,
+                    status: snapshot.status,
+                    license_document_url: snapshot.license_document_url,
+                  }
+                : null
+            }
           />
         ))}
         {bookings.length === 0 ? (

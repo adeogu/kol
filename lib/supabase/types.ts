@@ -176,6 +176,7 @@ export interface Database {
           license_type: string | null;
           county: string | null;
           expiry_date: string | null;
+          license_document_url: string | null;
           status: "VERIFIED" | "REJECTED" | "NEEDS_REVIEW" | "UNVERIFIED";
           created_at: string;
         };

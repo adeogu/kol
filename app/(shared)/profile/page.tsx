@@ -23,6 +23,10 @@ export default function ProfilePage() {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<string | null>(null);
   const isHunter = role === "HUNTER";
+  const allowDemoBypass =
+    process.env.NEXT_PUBLIC_DEV_ALLOW_LICENSE_BYPASS === "true" ||
+    (process.env.NODE_ENV === "development" &&
+      process.env.NEXT_PUBLIC_DEV_ALLOW_LICENSE_BYPASS !== "false");
 
   const licenseBadgeClasses = useMemo(() => {
     if (licenseStatus === "VERIFIED") {
@@ -90,7 +94,7 @@ export default function ProfilePage() {
     setLoading(false);
   };
 
-  const handleVerifyLicense = async () => {
+  const submitLicenseVerification = async (useDemoBypass: boolean) => {
     if (!isHunter) return;
     if (!isOnline) {
       setVerifyStatus("Reconnect to the internet to verify your license.");
@@ -126,7 +130,7 @@ export default function ProfilePage() {
         documentUrl = data.publicUrl;
       }
 
-      if (!documentUrl) {
+      if (!documentUrl && !useDemoBypass) {
         setVerifyStatus("Upload your hunting license image/PDF first.");
         return;
       }
@@ -135,7 +139,7 @@ export default function ProfilePage() {
         .from("profiles")
         .update({
           license_number: licenseNumber.trim() || null,
-          license_document_url: documentUrl,
+          license_document_url: documentUrl ?? null,
           license_status: "PENDING",
           license_verified: false,
         })
@@ -153,9 +157,10 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({
           hunterId: user.id,
-          licenseDocumentUrl: documentUrl,
+          licenseDocumentUrl: documentUrl ?? null,
           declaredLicenseNumber: licenseNumber.trim() || null,
           county: null,
+          useDemoBypass,
         }),
       });
 
@@ -174,11 +179,19 @@ export default function ProfilePage() {
       const resolvedStatus = payload?.status ?? "PENDING";
       setVerifyStatus(`License verification updated: ${resolvedStatus}.`);
       setLicenseFile(null);
-      setLicenseDocumentUrl(documentUrl);
+      setLicenseDocumentUrl(documentUrl ?? null);
       await loadProfile();
     } finally {
       setVerifyLoading(false);
     }
+  };
+
+  const handleVerifyLicense = () => {
+    void submitLicenseVerification(false);
+  };
+
+  const handleDemoBypassVerification = () => {
+    void submitLicenseVerification(true);
   };
 
   const handleLogout = async () => {
@@ -264,9 +277,16 @@ export default function ProfilePage() {
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-forest/70">
                 License verification
               </p>
-              <h2 className="text-lg font-semibold text-ink">
-                Verify before booking
-              </h2>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-ink">
+                  Verify before booking
+                </h2>
+                {allowDemoBypass ? (
+                  <span className="rounded-full border border-amber-300/60 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-900">
+                    Dev mode
+                  </span>
+                ) : null}
+              </div>
             </div>
             <span
               className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${licenseBadgeClasses}`}
@@ -349,6 +369,21 @@ export default function ProfilePage() {
           >
             {verifyLoading ? "Verifying..." : "Upload and verify license"}
           </button>
+          {allowDemoBypass ? (
+            <button
+              type="button"
+              onClick={handleDemoBypassVerification}
+              disabled={verifyLoading || !isOnline}
+              className="rounded-full border border-ink/15 px-5 py-2 text-sm font-semibold text-ink/70 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {verifyLoading ? "Verifying..." : "Use demo verification"}
+            </button>
+          ) : null}
+          {allowDemoBypass ? (
+            <p className="text-xs text-ink/50">
+              Demo verification is enabled for local testing only.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

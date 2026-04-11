@@ -113,6 +113,7 @@ export function BookingPanel({ listing }: Props) {
         license_verified?: boolean | null;
         license_status?: string | null;
         license_number?: string | null;
+        license_document_url?: string | null;
         first_name?: string | null;
         last_name?: string | null;
         county?: string | null;
@@ -151,17 +152,29 @@ export function BookingPanel({ listing }: Props) {
         setMessage(error?.message ?? "Unable to create booking.");
         return;
       }
+
+      const { data: latestVerification } = await supabase
+        .from("hunter_license_verifications")
+        .select("extracted_holder_name, extracted_license_type")
+        .eq("hunter_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       await supabase.from("booking_license_snapshots").insert({
         booking_id: booking.id,
         hunter_id: user.id,
         landowner_id: listing.owner_id,
         license_number: profileRecord.license_number ?? null,
         holder_name:
-          [profileRecord.first_name, profileRecord.last_name]
+          latestVerification?.extracted_holder_name ??
+          ([profileRecord.first_name, profileRecord.last_name]
             .filter(Boolean)
-            .join(" ") || null,
+            .join(" ") || null),
+        license_type: latestVerification?.extracted_license_type ?? null,
         county: profileRecord.county ?? null,
         expiry_date: profileRecord.license_expiry_date ?? null,
+        license_document_url: profileRecord.license_document_url ?? null,
         status: "VERIFIED",
       });
       await fetch("/api/push/booking-created", {

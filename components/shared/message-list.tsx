@@ -15,7 +15,9 @@ export function MessageList({ messages, currentUserId }: Props) {
   return (
     <div className="space-y-3">
       {messages.map((message) => {
-        const isMine = message.sender_id === currentUserId;
+        const isMine =
+          Boolean(currentUserId) &&
+          message.sender_id.toLowerCase() === currentUserId?.toLowerCase();
         return (
           <div
             key={message.id}
@@ -25,7 +27,7 @@ export function MessageList({ messages, currentUserId }: Props) {
               className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
                 isMine
                   ? "bg-forest text-white"
-                  : "border border-ink/10 bg-white text-ink"
+                  : "border border-ink/10 bg-ink/5 text-ink"
               }`}
             >
               <p>{message.content}</p>
