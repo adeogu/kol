@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function RoleSelectionPage() {
@@ -9,30 +9,51 @@ export default function RoleSelectionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const bootstrap = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.onboarding_completed) {
+        router.replace("/dashboard");
+        router.refresh();
+      }
+    };
+
+    bootstrap();
+  }, [router]);
+
   const handleSelect = async (role: "HUNTER" | "LANDOWNER") => {
     setLoading(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
+      const response = await fetch("/api/onboarding/select-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
         setError(
-          "Please log in to continue. If you just signed up, confirm your email first.",
+          payload?.error ??
+            "Could not save your role yet. Please try again in a moment.",
         );
         return;
       }
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ role })
-        .eq("id", user.id);
-      if (updateError) {
-        setError(updateError.message);
-        return;
-      }
-      router.push(`/onboarding/${role === "HUNTER" ? "hunter" : "landowner"}`);
+      router.replace("/dashboard");
+      router.refresh();
     } finally {
       setLoading(false);
     }

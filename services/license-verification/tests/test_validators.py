@@ -83,3 +83,26 @@ def test_evaluate_license_rejected_for_bad_number() -> None:
     )
     assert result.status == "REJECTED"
     assert "Invalid or missing license number format." in result.reasons
+
+
+def test_evaluate_license_needs_review_for_invalid_expiry_and_type() -> None:
+    result = evaluate_license(
+        license_number="NARGC-12345",
+        holder_name="Jane Hunter",
+        expiry_date="not-a-date",
+        license_type="fishing",
+    )
+    assert result.status == "NEEDS_REVIEW"
+    assert "Missing or invalid expiry date." in result.reasons
+    assert "Unsupported or missing license type." in result.reasons
+
+
+def test_evaluate_license_respects_required_checks_subset() -> None:
+    result = evaluate_license(
+        license_number="NARGC-12345",
+        holder_name=None,
+        expiry_date=None,
+        license_type="GAME",
+        required_checks={"license_number", "license_type"},
+    )
+    assert result.status == "VERIFIED"

@@ -192,6 +192,12 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
               <p>Listings after filters: {filtered.length}</p>
               <p>Markers on map: {mapDebug?.markerCount ?? 0}</p>
               <p>POIs on map: {mapDebug?.poiCount ?? 0}</p>
+              <p>POI source: {mapDebug?.poiSource ?? "seed"}</p>
+              <p>POI loading: {mapDebug?.poiLoading ? "yes" : "no"}</p>
+              <p>
+                user location: {mapDebug?.userLocationKnown ? "found" : "not set"}
+              </p>
+              <p>location status: {mapDebug?.locationStatus ?? "idle"}</p>
               {mapDebug?.mapState ? (
                 <div className="text-xs text-ink/60">
                   <p>dragging: {mapDebug.mapState.dragging ? "on" : "off"}</p>

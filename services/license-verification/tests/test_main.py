@@ -81,3 +81,29 @@ def test_verify_license_payload_validation() -> None:
         },
     )
     assert response.status_code == 422
+
+
+def test_verify_license_uses_ai_extracted_fields_when_missing(monkeypatch) -> None:
+    future = (date.today() + timedelta(days=120)).isoformat()
+
+    def fake_extract(_image_url: str) -> dict[str, str | None]:
+        return {
+            "license_number": "NARGC-98765",
+            "holder_name": "AI Hunter",
+            "expiry_date": future,
+            "license_type": "GAME",
+            "county": "Sligo",
+        }
+
+    monkeypatch.setattr("app.main.extract_license_fields", fake_extract)
+    response = client.post(
+        "/verify-license",
+        json={
+            "hunter_id": "hunter-5",
+            "license_image_url": "https://example.com/license.jpg",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "VERIFIED"
+    assert payload["extracted_fields"]["holder_name"] == "AI Hunter"

@@ -8,14 +8,17 @@ import {
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
-import { POI_DATA, type PoiCategory } from "@/lib/poi";
-import type { Listing } from "@/types";
 import {
-  formatCoordinateValue,
-  parseCoordinateValue,
-} from "@/lib/geo";
+  filterSeedPois,
+  type PoiBounds,
+  type PoiCategory,
+  type PointOfInterest,
+} from "@/lib/poi";
+import { formatCoordinateValue, parseCoordinateValue } from "@/lib/geo";
+import type { Listing } from "@/types";
 
 type Props = {
   listings: Listing[];
@@ -40,6 +43,10 @@ export type MapDebugInfo = {
     keyboard: boolean;
   };
   poiCount?: number;
+  poiSource?: "seed" | "overpass";
+  poiLoading?: boolean;
+  userLocationKnown?: boolean;
+  locationStatus?: "idle" | "locating" | "ready" | "denied" | "unavailable";
 };
 
 const markerIcon = L.divIcon({
@@ -47,20 +54,36 @@ const markerIcon = L.divIcon({
   html: "<div style='width:14px;height:14px;border-radius:999px;background:#1f3a2a;box-shadow:0 0 0 4px rgba(31,58,42,0.2)'></div>",
 });
 
-export default function MapViewClient({
-  listings,
-  poiCategories,
-  onDebug,
-}: Props) {
+const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const mapTiles = mapboxToken
+  ? {
+      url: `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`,
+      attribution:
+        "&copy; <a href=\"https://www.mapbox.com/about/maps/\">Mapbox</a> &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a>",
+    }
+  : {
+      url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      attribution:
+        "&copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors &copy; <a href=\"https://www.carto.com/\">CARTO</a>",
+    };
+
+export default function MapViewClient({ listings, poiCategories, onDebug }: Props) {
   const mapId = useId().replace(/:/g, "");
   const debugRef = useRef<string | null>(null);
-  const initialCenter = useMemo(
-    () => [53.3, -8.0] as [number, number],
-    [],
-  );
-  const [mapState, setMapState] = useState<MapDebugInfo["mapState"] | null>(
+  const initialCenter = useMemo(() => [53.3, -8.0] as [number, number], []);
+  const [mapState, setMapState] = useState<MapDebugInfo["mapState"] | null>(null);
+  const [bounds, setBounds] = useState<PoiBounds | null>(null);
+  const [poiMarkers, setPoiMarkers] = useState<PointOfInterest[]>([]);
+  const [poiSource, setPoiSource] = useState<"seed" | "overpass">("seed");
+  const [poiLoading, setPoiLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(
     null,
   );
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "locating" | "ready" | "denied" | "unavailable"
+  >("idle");
+  const mapRef = useRef<L.Map | null>(null);
+
   const markers = useMemo(
     () =>
       listings
@@ -71,23 +94,78 @@ export default function MapViewClient({
         .filter((item) => item.coords),
     [listings],
   );
+
   const activeCategories = useMemo<PoiCategory[]>(
     () =>
       poiCategories && poiCategories.length > 0
         ? poiCategories
-        : ([
-            "restaurant",
-            "hotel",
-            "motel",
-            "sightseeing",
-            "hunting_store",
-          ] as PoiCategory[]),
+        : (["restaurant", "hotel", "motel", "sightseeing", "hunting_store"] as PoiCategory[]),
     [poiCategories],
   );
-  const poiMarkers = useMemo(
-    () => POI_DATA.filter((poi) => activeCategories.includes(poi.category)),
+  const categoriesKey = useMemo(
+    () => [...activeCategories].sort().join(","),
     [activeCategories],
   );
+
+  const fallbackPois = useMemo(
+    () => filterSeedPois(activeCategories, bounds),
+    [activeCategories, bounds],
+  );
+
+  useEffect(() => {
+    setPoiMarkers(fallbackPois);
+    setPoiSource("seed");
+  }, [fallbackPois]);
+
+  useEffect(() => {
+    if (!bounds) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        setPoiLoading(true);
+        const params = new URLSearchParams({
+          south: String(bounds.south),
+          west: String(bounds.west),
+          north: String(bounds.north),
+          east: String(bounds.east),
+          categories: categoriesKey,
+        });
+
+        const response = await fetch(`/api/poi/search?${params.toString()}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("POI request failed.");
+        }
+
+        const payload = (await response.json()) as {
+          pois?: PointOfInterest[];
+          source?: "seed" | "overpass";
+        };
+        if (controller.signal.aborted) return;
+
+        const pois = Array.isArray(payload.pois) ? payload.pois : [];
+        setPoiMarkers(pois.length > 0 ? pois : fallbackPois);
+        setPoiSource(payload.source === "overpass" ? "overpass" : "seed");
+      } catch {
+        if (controller.signal.aborted) return;
+        setPoiMarkers(fallbackPois);
+        setPoiSource("seed");
+      } finally {
+        if (!controller.signal.aborted) {
+          setPoiLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [bounds, categoriesKey, fallbackPois]);
+
   const poiColorMap: Record<PoiCategory, string> = {
     restaurant: "#2f8f5b",
     hotel: "#3f6c52",
@@ -95,11 +173,16 @@ export default function MapViewClient({
     sightseeing: "#6b8f3e",
     hunting_store: "#1f4a2f",
   };
+
   const debugInfo = useMemo<MapDebugInfo>(
     () => ({
       totalListings: listings.length,
       markerCount: markers.length,
       poiCount: poiMarkers.length,
+      poiSource,
+      poiLoading,
+      userLocationKnown: Boolean(userLocation),
+      locationStatus,
       mapState: mapState ?? undefined,
       sample: listings.slice(0, 5).map((listing) => ({
         id: listing.id,
@@ -108,7 +191,16 @@ export default function MapViewClient({
         raw: formatCoordinateValue(listing.coordinates).slice(0, 160),
       })),
     }),
-    [listings, markers.length, mapState, poiMarkers.length],
+    [
+      listings,
+      markers.length,
+      poiMarkers.length,
+      poiSource,
+      poiLoading,
+      mapState,
+      userLocation,
+      locationStatus,
+    ],
   );
 
   useEffect(() => {
@@ -128,13 +220,30 @@ export default function MapViewClient({
     onDebug(debugInfo);
   }, [debugInfo, onDebug]);
 
+  const locateMe = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("unavailable");
+      return;
+    }
+    if (!mapRef.current) return;
+    setLocationStatus("locating");
+    mapRef.current.locate({
+      setView: true,
+      maxZoom: 13,
+      enableHighAccuracy: true,
+      timeout: 10000,
+    });
+  };
+
   return (
-    <div className="h-[420px] w-full overflow-hidden rounded-3xl border border-ink/10">
+    <div className="relative h-[420px] w-full overflow-hidden rounded-3xl border border-ink/10">
       <MapContainer
         id={mapId}
         key={mapId}
         center={initialCenter}
         zoom={7}
+        minZoom={6}
+        maxZoom={16}
         scrollWheelZoom
         dragging
         doubleClickZoom
@@ -142,11 +251,20 @@ export default function MapViewClient({
         keyboard
         className="h-full w-full"
       >
-        <MapStateReporter onState={setMapState} markers={markers} />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://www.carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        <MapStateReporter
+          markers={markers}
+          onBoundsChange={setBounds}
+          onState={setMapState}
+          onMapReady={(map) => {
+            mapRef.current = map;
+          }}
+          onUserLocationChange={(location) => {
+            setUserLocation(location);
+          }}
+          onLocationStatusChange={setLocationStatus}
         />
+        <TileLayer attribution={mapTiles.attribution} url={mapTiles.url} />
+
         {markers.map((item) => (
           <Marker
             key={item.listing.id}
@@ -155,25 +273,26 @@ export default function MapViewClient({
           >
             <Popup>
               <div className="space-y-1">
-                <p className="text-sm font-semibold">{item.listing.title}</p>
-                <p className="text-xs text-gray-600">{item.listing.county}</p>
+                <p className="text-sm font-semibold text-ink">{item.listing.title}</p>
+                <p className="text-xs text-ink/70">{item.listing.county}</p>
                 <p className="text-xs font-semibold text-forest">
-                  €{item.listing.price_per_day}/day
+                  EUR {item.listing.price_per_day}/day
                 </p>
               </div>
             </Popup>
           </Marker>
         ))}
+
         {poiMarkers.map((poi) => (
           <CircleMarker
             key={poi.id}
             center={[poi.lat, poi.lng]}
-            radius={6}
+            radius={4}
             pathOptions={{
               color: poiColorMap[poi.category],
-              weight: 2,
+              weight: 1.5,
               fillColor: poiColorMap[poi.category],
-              fillOpacity: 0.7,
+              fillOpacity: 0.55,
             }}
           >
             <Popup>
@@ -182,45 +301,133 @@ export default function MapViewClient({
                 <p className="text-xs uppercase text-ink/60">
                   {poi.category.replace("_", " ")}
                 </p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-ink/40">
+                  {poi.source === "overpass" ? "live nearby" : "seed data"}
+                </p>
               </div>
             </Popup>
           </CircleMarker>
         ))}
+
+        {userLocation ? (
+          <CircleMarker
+            center={[userLocation.lat, userLocation.lng]}
+            radius={8}
+            pathOptions={{
+              color: "#0f3f26",
+              weight: 2,
+              fillColor: "#4f8a5c",
+              fillOpacity: 0.8,
+            }}
+          >
+            <Popup>
+              <p className="text-sm font-semibold text-ink">Your location</p>
+            </Popup>
+          </CircleMarker>
+        ) : null}
       </MapContainer>
+      <button
+        type="button"
+        onClick={locateMe}
+        className="absolute right-3 top-3 z-[500] rounded-full border border-ink/15 bg-white/95 px-3 py-2 text-xs font-semibold text-ink shadow"
+      >
+        {locationStatus === "locating" ? "Locating..." : "Locate me"}
+      </button>
     </div>
   );
 }
 
+function mapStateSnapshot(map: ReturnType<typeof useMap>) {
+  return {
+    dragging: map.dragging.enabled(),
+    scrollWheelZoom: map.scrollWheelZoom.enabled(),
+    touchZoom: map.touchZoom.enabled(),
+    doubleClickZoom: map.doubleClickZoom.enabled(),
+    keyboard: map.keyboard.enabled(),
+  };
+}
+
+function mapBoundsSnapshot(map: ReturnType<typeof useMap>): PoiBounds {
+  const b = map.getBounds();
+  return {
+    south: b.getSouth(),
+    west: b.getWest(),
+    north: b.getNorth(),
+    east: b.getEast(),
+  };
+}
+
 function MapStateReporter({
   onState,
+  onBoundsChange,
+  onMapReady,
+  onUserLocationChange,
+  onLocationStatusChange,
   markers,
 }: {
   onState: (state: MapDebugInfo["mapState"] | null) => void;
+  onBoundsChange: (bounds: PoiBounds) => void;
+  onMapReady: (map: L.Map) => void;
+  onUserLocationChange: (location: { lat: number; lng: number }) => void;
+  onLocationStatusChange: (
+    status: "idle" | "locating" | "ready" | "denied" | "unavailable",
+  ) => void;
   markers: Array<{ coords: { lat: number; lng: number } | null }>;
 }) {
   const map = useMap();
   const centeredRef = useRef(false);
 
+  useMapEvents({
+    moveend: () => {
+      onBoundsChange(mapBoundsSnapshot(map));
+      onState(mapStateSnapshot(map));
+    },
+    zoomend: () => {
+      onBoundsChange(mapBoundsSnapshot(map));
+      onState(mapStateSnapshot(map));
+    },
+    locationfound: (event) => {
+      onUserLocationChange({ lat: event.latlng.lat, lng: event.latlng.lng });
+      onLocationStatusChange("ready");
+      onBoundsChange(mapBoundsSnapshot(map));
+      onState(mapStateSnapshot(map));
+    },
+    locationerror: () => {
+      onLocationStatusChange("denied");
+    },
+  });
+
   useEffect(() => {
+    onMapReady(map);
     map.dragging.enable();
     map.scrollWheelZoom.enable();
     map.touchZoom.enable();
     map.doubleClickZoom.enable();
     map.keyboard.enable();
-    if (!centeredRef.current && markers.length > 0 && markers[0].coords) {
-      const first = markers[0].coords;
-      map.setView([first.lat, first.lng], Math.max(map.getZoom(), 12));
-      centeredRef.current = true;
+    onLocationStatusChange("idle");
+    onState(mapStateSnapshot(map));
+    onBoundsChange(mapBoundsSnapshot(map));
+  }, [map, onBoundsChange, onMapReady, onState, onLocationStatusChange]);
+
+  useEffect(() => {
+    if (centeredRef.current || markers.length === 0) return;
+    const points = markers
+      .map((marker) => marker.coords)
+      .filter((value): value is { lat: number; lng: number } => Boolean(value))
+      .map((coord) => [coord.lat, coord.lng] as [number, number]);
+
+    if (points.length === 0) return;
+
+    if (points.length === 1) {
+      map.setView(points[0], Math.max(map.getZoom(), 11));
+    } else {
+      map.fitBounds(points, { padding: [28, 28], maxZoom: 11 });
     }
-    onState({
-      dragging: map.dragging.enabled(),
-      scrollWheelZoom: map.scrollWheelZoom.enabled(),
-      touchZoom: map.touchZoom.enabled(),
-      doubleClickZoom: map.doubleClickZoom.enabled(),
-      keyboard: map.keyboard.enabled(),
-    });
-  }, [map, markers, onState]);
-  
+
+    centeredRef.current = true;
+    onBoundsChange(mapBoundsSnapshot(map));
+    onState(mapStateSnapshot(map));
+  }, [map, markers, onBoundsChange, onState]);
 
   return null;
 }

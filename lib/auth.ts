@@ -30,6 +30,7 @@ export async function requireUser() {
 export async function requireRole(required: Role) {
   const profile = await getProfile();
   if (!profile) redirect("/login");
+  if (!profile.onboarding_completed) redirect("/onboarding");
   if (profile.role === "ADMIN") return profile;
   if (profile.role !== required) {
     if (profile.role === "HUNTER") redirect("/dashboard");

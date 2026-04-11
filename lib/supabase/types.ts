@@ -36,6 +36,7 @@ export interface Database {
           county: string | null;
           latitude: number | null;
           longitude: number | null;
+          onboarding_completed: boolean;
           created_at: string;
           updated_at: string;
         };

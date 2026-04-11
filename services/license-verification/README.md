@@ -30,3 +30,6 @@ python -m uvicorn app.main:app --reload --port 8001
 - For local app integration, set:
   - `LICENSE_VERIFICATION_SERVICE_URL=http://localhost:8001`
   - `LICENSE_VERIFICATION_FALLBACK_MODE=verify_valid` (optional dev fallback)
+- Optional AI extraction settings:
+  - `OPENAI_API_KEY=...` enables image field extraction with GPT-4o compatible chat completions.
+  - `OPENAI_VISION_MODEL=gpt-4o-mini` (optional override; defaults to this).

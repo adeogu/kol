@@ -28,6 +28,25 @@ function LoginForm() {
         setError(authError.message);
         return;
       }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.onboarding_completed) {
+        router.push("/onboarding");
+        return;
+      }
+
       router.push("/dashboard");
     } finally {
       setLoading(false);

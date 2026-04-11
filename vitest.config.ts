@@ -21,8 +21,11 @@ export default defineConfig({
       include: [
         "app/api/messages/send/route.ts",
         "app/api/bookings/[id]/status/route.ts",
+        "app/api/onboarding/select-role/route.ts",
+        "app/api/poi/search/route.ts",
         "app/api/push/booking-created/route.ts",
         "app/api/push/subscribe/route.ts",
+        "lib/poi.ts",
         "lib/push/server.ts",
       ],
       exclude: [],
