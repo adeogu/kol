@@ -18,7 +18,7 @@ export function BookingModalButton({ listing, label = "Book" }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-full border border-forest px-3 py-1 text-xs font-semibold text-forest transition hover:bg-forest hover:text-white"
+        className="min-h-[38px] rounded-full border border-forest px-3 py-1 text-sm font-semibold text-forest transition hover:bg-forest hover:text-white sm:text-xs"
       >
         {label}
       </button>
@@ -31,7 +31,7 @@ export function BookingModalButton({ listing, label = "Book" }: Props) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-[280px] rounded-3xl border border-ink/10 bg-white p-5 shadow-[0_20px_60px_rgba(17,18,15,0.25)]"
+            className="w-full max-w-[320px] rounded-2xl border border-ink/10 bg-white p-4 shadow-[0_20px_60px_rgba(17,18,15,0.25)] sm:max-w-[280px] sm:rounded-3xl sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -41,16 +41,16 @@ export function BookingModalButton({ listing, label = "Book" }: Props) {
                 </p>
                 <p
                   id={titleId}
-                  className="mt-1 text-sm font-semibold text-ink"
+                  className="mt-1 text-base font-semibold text-ink sm:text-sm"
                 >
                   {listing.title}
                 </p>
-                <p className="text-xs text-ink/60">{listing.county}</p>
+                <p className="text-sm text-ink/60 sm:text-xs">{listing.county}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold text-ink/70 transition hover:border-ink/30"
+                className="min-h-[36px] rounded-full border border-ink/15 px-3 py-1 text-sm font-semibold text-ink/70 transition hover:border-ink/30 sm:text-xs"
               >
                 Close
               </button>

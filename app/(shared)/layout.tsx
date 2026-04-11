@@ -16,10 +16,10 @@ export default async function SharedLayout({
   const isLandowner = profile?.role === "LANDOWNER";
   return (
     <div className="min-h-screen">
-      <div className="mx-auto w-full max-w-6xl px-6 pt-6">
+      <div className="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 sm:pt-6">
         {isLandowner ? <LandownerNav /> : <HunterNav />}
       </div>
-      <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-8">
+      <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 sm:pb-16 sm:pt-8">
         {children}
       </main>
     </div>

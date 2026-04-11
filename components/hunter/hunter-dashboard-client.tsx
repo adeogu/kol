@@ -61,17 +61,17 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
   }, [listings, county, accessType, animals, minPrice, maxPrice]);
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
+    <div className="space-y-6 sm:space-y-8">
+      <section className="grid gap-4 sm:gap-6 md:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-forest/70">
               Discover
             </p>
-            <h1 className="section-title text-3xl font-semibold text-ink">
+            <h1 className="section-title text-2xl font-semibold text-ink sm:text-3xl">
               Explore hunting land across Ireland
             </h1>
-            <p className="text-sm text-ink/60">
+            <p className="text-sm leading-relaxed text-ink/60">
               Pan the map, review listing details, and reserve your next hunt.
             </p>
           </div>
@@ -81,12 +81,12 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
             onDebug={handleMapDebug}
           />
         </div>
-        <div className="space-y-4 rounded-3xl border border-ink/10 bg-white p-5">
+        <div className="space-y-4 rounded-2xl border border-ink/10 bg-white p-4 sm:rounded-3xl sm:p-5">
           <p className="text-sm font-semibold text-ink">Filters</p>
           <div>
-            <label className="text-xs font-semibold text-ink/70">County</label>
+            <label className="text-sm font-semibold text-ink/70">County</label>
             <select
-              className="field mt-2 w-full rounded-xl px-3 py-2 text-xs"
+              className="field mt-2 min-h-[42px] w-full rounded-xl px-3 py-2 text-sm"
               value={county}
               onChange={(event) => setCounty(event.target.value)}
             >
@@ -99,14 +99,14 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-ink/70">Animals</label>
+            <label className="text-sm font-semibold text-ink/70">Animals</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {ANIMALS.map((animal) => (
                 <button
                   key={animal}
                   type="button"
                   onClick={() => toggleAnimal(animal)}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                     animals.includes(animal)
                       ? "bg-forest text-white"
                       : "border border-ink/15 text-ink/60"
@@ -119,32 +119,32 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold text-ink/70">
+              <label className="text-sm font-semibold text-ink/70">
                 Min price
               </label>
               <input
-                className="field mt-2 w-full rounded-xl px-3 py-2 text-xs"
+                className="field mt-2 min-h-[42px] w-full rounded-xl px-3 py-2 text-sm"
                 value={minPrice}
                 onChange={(event) => setMinPrice(event.target.value)}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-ink/70">
+              <label className="text-sm font-semibold text-ink/70">
                 Max price
               </label>
               <input
-                className="field mt-2 w-full rounded-xl px-3 py-2 text-xs"
+                className="field mt-2 min-h-[42px] w-full rounded-xl px-3 py-2 text-sm"
                 value={maxPrice}
                 onChange={(event) => setMaxPrice(event.target.value)}
               />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-ink/70">
+            <label className="text-sm font-semibold text-ink/70">
               Access type
             </label>
             <select
-              className="field mt-2 w-full rounded-xl px-3 py-2 text-xs"
+              className="field mt-2 min-h-[42px] w-full rounded-xl px-3 py-2 text-sm"
               value={accessType}
               onChange={(event) => setAccessType(event.target.value)}
             >
@@ -157,7 +157,7 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-ink/70">
+            <label className="text-sm font-semibold text-ink/70">
               Nearby POIs
             </label>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -166,7 +166,7 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
                   key={poi.value}
                   type="button"
                   onClick={() => togglePoiCategory(poi.value)}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                     poiCategories.includes(poi.value)
                       ? "bg-forest text-white"
                       : "border border-ink/15 text-ink/60"
@@ -242,11 +242,11 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold text-ink">Recommended listings</p>
           <p className="text-xs text-ink/60">{filtered.length} available</p>
         </div>
-        <div className="grid items-stretch gap-4 md:grid-cols-2">
+        <div className="grid items-stretch gap-4 sm:grid-cols-2">
           {filtered.map((listing) => (
             <ListingCard key={listing.id} listing={listing} showBook />
           ))}

@@ -111,10 +111,10 @@ export async function LandownerDashboard() {
   }, 0);
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-6 md:grid-cols-[1fr_1fr]">
+    <div className="space-y-6 sm:space-y-8">
+      <section className="grid gap-4 sm:gap-6 md:grid-cols-[1fr_1fr]">
         <EarningsChart total={totalEarnings} />
-        <div className="rounded-3xl border border-ink/10 bg-white p-6">
+        <div className="rounded-2xl border border-ink/10 bg-white p-5 sm:rounded-3xl sm:p-6">
           <p className="text-sm font-semibold text-ink">Property overview</p>
           <div className="mt-4 space-y-3 text-sm text-ink/70">
             <p>Total listings: {listings.length}</p>
@@ -125,15 +125,15 @@ export async function LandownerDashboard() {
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold text-ink">
             Pending booking requests
           </p>
           <p className="text-xs text-ink/60">{pending.length} waiting</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {pending.length === 0 ? (
-            <div className="rounded-3xl border border-ink/10 bg-white p-6 text-sm text-ink/60">
+            <div className="rounded-2xl border border-ink/10 bg-white p-5 text-sm text-ink/60 sm:rounded-3xl sm:p-6">
               No pending requests. New bookings will appear here.
             </div>
           ) : null}

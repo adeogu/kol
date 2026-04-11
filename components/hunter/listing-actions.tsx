@@ -77,7 +77,7 @@ export function ListingActions({ listingId, landownerId }: Props) {
         type="button"
         onClick={handleSave}
         disabled={saving || isOwner}
-        className="rounded-full border border-ink/15 px-5 py-2 text-sm font-semibold text-ink/70 transition hover:border-forest hover:text-forest disabled:opacity-60"
+        className="min-h-[42px] rounded-full border border-ink/15 px-5 py-2 text-sm font-semibold text-ink/70 transition hover:border-forest hover:text-forest disabled:opacity-60"
       >
         {saving ? "Saving..." : "Save listing"}
       </button>
@@ -85,7 +85,7 @@ export function ListingActions({ listingId, landownerId }: Props) {
         type="button"
         onClick={handleMessage}
         disabled={messaging || isOwner}
-        className="rounded-full bg-forest px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-forest/30 transition hover:bg-pine disabled:opacity-60"
+        className="min-h-[42px] rounded-full bg-forest px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-forest/30 transition hover:bg-pine disabled:opacity-60"
       >
         {messaging ? "Opening..." : "Message landowner"}
       </button>

@@ -61,7 +61,7 @@ export function StartConversationButton({
       onClick={openConversation}
       className={
         className ??
-        "rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 transition hover:border-forest hover:text-forest disabled:opacity-60"
+        "min-h-[42px] rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink/70 transition hover:border-forest hover:text-forest disabled:opacity-60 sm:text-xs"
       }
     >
       {loading ? loadingLabel : label}

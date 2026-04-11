@@ -36,7 +36,7 @@ export function ReviewForm({ bookingId, listingId, revieweeId }: Props) {
 
   if (done) {
     return (
-      <p className="rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
+      <p className="rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-sm text-success sm:text-xs">
         Review submitted. Thank you!
       </p>
     );
@@ -44,14 +44,14 @@ export function ReviewForm({ bookingId, listingId, revieweeId }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold text-ink">Leave a review</p>
+      <p className="text-sm font-semibold text-ink sm:text-xs">Leave a review</p>
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             key={value}
             type="button"
             onClick={() => setRating(value)}
-            className={`h-8 w-8 rounded-full text-xs font-semibold ${
+            className={`h-9 w-9 rounded-full text-sm font-semibold sm:h-8 sm:w-8 sm:text-xs ${
               rating >= value
                 ? "bg-forest text-white"
                 : "border border-ink/15 text-ink/60"
@@ -63,7 +63,7 @@ export function ReviewForm({ bookingId, listingId, revieweeId }: Props) {
       </div>
       <textarea
         rows={2}
-        className="field w-full rounded-xl px-3 py-2 text-xs"
+        className="field w-full rounded-xl px-3 py-2 text-base sm:text-xs"
         value={comment}
         onChange={(event) => setComment(event.target.value)}
         placeholder="Share your experience"
@@ -72,7 +72,7 @@ export function ReviewForm({ bookingId, listingId, revieweeId }: Props) {
         type="button"
         onClick={submitReview}
         disabled={loading}
-        className="rounded-full bg-forest px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+        className="min-h-[42px] rounded-full bg-forest px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 sm:text-xs"
       >
         {loading ? "Submitting..." : "Submit review"}
       </button>

@@ -207,22 +207,22 @@ export function MessagesClient() {
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-[0.4fr_0.6fr]">
-      <div className="rounded-3xl border border-ink/10 bg-white p-4">
+    <div className="grid gap-4 md:gap-6 md:grid-cols-[0.4fr_0.6fr]">
+      <div className="rounded-2xl border border-ink/10 bg-white p-4 sm:rounded-3xl">
         <p className="text-sm font-semibold text-ink">Conversations</p>
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 max-h-[32dvh] space-y-2 overflow-auto pr-1 md:max-h-none">
           {conversationCards.map(({ conversation, otherName, listingTitle }) => (
             <button
               key={conversation.id}
               onClick={() => setActiveId(conversation.id)}
-              className={`w-full rounded-2xl border px-4 py-3 text-left text-xs transition ${
+              className={`min-h-[52px] w-full rounded-2xl border px-4 py-3 text-left text-xs transition ${
                 selectedId === conversation.id
                   ? "border-forest bg-forest/10 text-forest"
                   : "border-ink/10 text-ink/70 hover:border-forest/40"
               }`}
             >
               <p className="text-sm font-semibold leading-tight text-ink">{otherName}</p>
-              <p className="mt-1 truncate text-xs text-ink/60">{listingTitle}</p>
+              <p className="mt-1 truncate text-sm text-ink/60 md:text-xs">{listingTitle}</p>
             </button>
           ))}
           {conversations.length === 0 ? (
@@ -232,14 +232,14 @@ export function MessagesClient() {
           ) : null}
         </div>
       </div>
-      <div className="rounded-3xl border border-ink/10 bg-white p-4">
-        <div className="flex h-[62dvh] min-h-[380px] flex-col md:h-[30rem]">
-          <div ref={messagesRef} className="flex-1 overflow-auto">
+      <div className="rounded-2xl border border-ink/10 bg-white p-4 sm:rounded-3xl">
+        <div className="flex h-[60dvh] min-h-[420px] flex-col md:h-[30rem]">
+          <div ref={messagesRef} className="flex-1 overflow-auto pr-1">
             <MessageList messages={messages} currentUserId={userId ?? undefined} />
           </div>
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex items-end gap-2">
             <input
-              className="field flex-1 rounded-full px-4 py-2 text-base md:text-sm"
+              className="field min-h-[44px] flex-1 rounded-full px-4 py-2 text-base md:text-sm"
               placeholder="Type a message"
               value={content}
               onChange={(event) => setContent(event.target.value)}
@@ -249,7 +249,7 @@ export function MessagesClient() {
               type="button"
               onClick={sendMessage}
               disabled={!isOnline}
-              className="rounded-full bg-forest px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-[44px] rounded-full bg-forest px-5 py-2 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
             >
               Send
             </button>

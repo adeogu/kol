@@ -53,8 +53,8 @@ export function BookingCalendar({
   };
 
   return (
-    <div className="space-y-4 rounded-3xl border border-ink/10 bg-white p-6">
-      <p className="text-sm font-semibold text-ink">Choose your dates</p>
+    <div className="space-y-4 rounded-2xl border border-ink/10 bg-white p-4 sm:rounded-3xl sm:p-6">
+      <p className="text-base font-semibold text-ink sm:text-sm">Choose your dates</p>
       <DayPicker
         mode="range"
         selected={range}
@@ -64,7 +64,7 @@ export function BookingCalendar({
         className="w-full"
       />
       {range?.from && range?.to ? (
-        <p className="text-xs text-ink/60">
+        <p className="text-sm text-ink/60 sm:text-xs">
           {format(range.from, "MMM d, yyyy")} -{" "}
           {format(range.to, "MMM d, yyyy")}
         </p>
@@ -78,7 +78,7 @@ export function BookingCalendar({
         type="button"
         onClick={handleConfirm}
         disabled={confirmDisabled}
-        className="w-full rounded-full bg-forest px-6 py-3 text-sm font-semibold text-white transition hover:bg-pine disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-[44px] w-full rounded-full bg-forest px-6 py-3 text-base font-semibold text-white transition hover:bg-pine disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
       >
         {buttonLabel}
       </button>

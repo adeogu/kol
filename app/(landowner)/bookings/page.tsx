@@ -91,16 +91,16 @@ export default async function BookingsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-forest/70">
           Bookings
         </p>
-        <h1 className="section-title text-3xl font-semibold text-ink">
+        <h1 className="section-title text-2xl font-semibold text-ink sm:text-3xl">
           Manage booking requests
         </h1>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {bookingCards.map(({ booking, hunterName, snapshot }) => (
           <BookingRequestCard
             key={booking.id}
@@ -126,7 +126,7 @@ export default async function BookingsPage() {
           />
         ))}
         {bookings.length === 0 ? (
-          <div className="rounded-3xl border border-ink/10 bg-white p-6 text-sm text-ink/60">
+          <div className="rounded-2xl border border-ink/10 bg-white p-5 text-sm text-ink/60 sm:rounded-3xl sm:p-6">
             No bookings yet.
           </div>
         ) : null}
