@@ -5,6 +5,7 @@ import { ListingCard } from "@/components/hunter/listing-card";
 import { MapView } from "@/components/hunter/map-view";
 import type { MapDebugInfo } from "@/components/hunter/map-view.client";
 import { ACCESS_TYPES, ANIMALS, COUNTIES } from "@/lib/constants";
+import { POI_CATEGORIES, type PoiCategory } from "@/lib/poi";
 import type { Listing } from "@/types";
 
 type Props = {
@@ -18,6 +19,9 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [accessType, setAccessType] = useState("");
+  const [poiCategories, setPoiCategories] = useState<PoiCategory[]>(
+    POI_CATEGORIES.map((item) => item.value),
+  );
   const [mapDebug, setMapDebug] = useState<MapDebugInfo | null>(null);
 
   const handleMapDebug = useCallback((info: MapDebugInfo) => {
@@ -30,6 +34,13 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
       prev.includes(animal)
         ? prev.filter((item) => item !== animal)
         : [...prev, animal],
+    );
+  };
+  const togglePoiCategory = (category: PoiCategory) => {
+    setPoiCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((item) => item !== category)
+        : [...prev, category],
     );
   };
 
@@ -66,6 +77,7 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
           </div>
           <MapView
             listings={filtered}
+            poiCategories={poiCategories}
             onDebug={handleMapDebug}
           />
         </div>
@@ -144,6 +156,27 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-xs font-semibold text-ink/70">
+              Nearby POIs
+            </label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {POI_CATEGORIES.map((poi) => (
+                <button
+                  key={poi.value}
+                  type="button"
+                  onClick={() => togglePoiCategory(poi.value)}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                    poiCategories.includes(poi.value)
+                      ? "bg-forest text-white"
+                      : "border border-ink/15 text-ink/60"
+                  }`}
+                >
+                  {poi.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <p className="text-xs text-ink/50">
             {filtered.length} properties found.
           </p>
@@ -158,6 +191,7 @@ export function HunterDashboardClient({ listings, debugError }: Props) {
               <p>Total listings fetched: {listings.length}</p>
               <p>Listings after filters: {filtered.length}</p>
               <p>Markers on map: {mapDebug?.markerCount ?? 0}</p>
+              <p>POIs on map: {mapDebug?.poiCount ?? 0}</p>
               {mapDebug?.mapState ? (
                 <div className="text-xs text-ink/60">
                   <p>dragging: {mapDebug.mapState.dragging ? "on" : "off"}</p>

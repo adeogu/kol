@@ -6,6 +6,7 @@ export function PwaRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     const isProduction = process.env.NODE_ENV === "production";
+    const enableInDev = process.env.NEXT_PUBLIC_ENABLE_SW_IN_DEV === "true";
 
     const unregisterAll = async () => {
       try {
@@ -25,7 +26,7 @@ export function PwaRegister() {
     };
 
     const register = async () => {
-      if (!isProduction) {
+      if (!isProduction && !enableInDev) {
         await unregisterAll();
         return;
       }

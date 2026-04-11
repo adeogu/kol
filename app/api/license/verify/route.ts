@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { sendPushToUser } from "@/lib/push/server";
 import { createRouteSupabase } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
@@ -167,6 +168,13 @@ export async function POST(request: Request) {
     status: decision.status,
     reasons: decision.reasons,
     raw_response: decision.rawResponse,
+  });
+
+  await sendPushToUser(parsed.data.hunterId, {
+    title: "License verification updated",
+    body: `Your hunting license status is now ${decision.status}.`,
+    url: "/profile",
+    tag: `license-${decision.status.toLowerCase()}`,
   });
 
   return NextResponse.json({

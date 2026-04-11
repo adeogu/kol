@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { Booking } from "@/types";
 import { StartConversationButton } from "@/components/shared/start-conversation-button";
 
@@ -11,22 +11,36 @@ type Props = {
 };
 
 export function BookingRequestCard({ booking, currentUserId }: Props) {
+  const isOnline = useOnlineStatus();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(booking.status);
+  const [error, setError] = useState<string | null>(null);
 
   const updateStatus = async (next: Booking["status"]) => {
+    if (!isOnline) {
+      setError("Reconnect to update booking status.");
+      return;
+    }
+
     setLoading(true);
-    const supabase = createClient();
-    await supabase
-      .from("bookings")
-      .update({
-        status: next,
-        confirmed_at: next === "CONFIRMED" ? new Date().toISOString() : null,
-        cancelled_at: next === "CANCELLED" ? new Date().toISOString() : null,
-      })
-      .eq("id", booking.id);
-    setStatus(next);
-    setLoading(false);
+    setError(null);
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(payload?.error ?? "Unable to update booking.");
+        return;
+      }
+      setStatus(next);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,14 +63,14 @@ export function BookingRequestCard({ booking, currentUserId }: Props) {
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
-          disabled={loading || status !== "PENDING"}
+          disabled={loading || status !== "PENDING" || !isOnline}
           onClick={() => updateStatus("CONFIRMED")}
           className="rounded-full bg-forest px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
         >
           Accept
         </button>
         <button
-          disabled={loading || status !== "PENDING"}
+          disabled={loading || status !== "PENDING" || !isOnline}
           onClick={() => updateStatus("CANCELLED")}
           className="rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 disabled:opacity-50"
         >
@@ -72,6 +86,7 @@ export function BookingRequestCard({ booking, currentUserId }: Props) {
           />
         ) : null}
       </div>
+      {error ? <p className="mt-3 text-xs text-danger">{error}</p> : null}
     </div>
   );
 }

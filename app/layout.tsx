@@ -3,6 +3,7 @@ import { Fraunces, Sora } from "next/font/google";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { OfflineBanner } from "@/components/shared/offline-banner";
+import { PwaInstallPrompt } from "@/components/shared/pwa-install-prompt";
 import { PwaRegister } from "@/components/shared/pwa-register";
 import { RecoveryLinkRedirect } from "@/components/shared/recovery-link-redirect";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
         <RecoveryLinkRedirect />
         <PwaRegister />
         <OfflineBanner />
+        <PwaInstallPrompt />
         {children}
       </body>
     </html>

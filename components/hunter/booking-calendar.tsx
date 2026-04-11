@@ -7,18 +7,33 @@ import { format } from "date-fns";
 type Props = {
   disabledDates?: Date[];
   maxRange?: number;
+  confirmDisabled?: boolean;
+  confirmDisabledReason?: string | null;
   onConfirm: (range: { from: Date; to: Date }) => void;
 };
 
 export function BookingCalendar({
   disabledDates = [],
   maxRange,
+  confirmDisabled = false,
+  confirmDisabledReason = null,
   onConfirm,
 }: Props) {
   const [range, setRange] = useState<DateRange | undefined>();
   const [error, setError] = useState<string | null>(null);
+  const buttonLabel = confirmDisabled
+    ? confirmDisabledReason
+      ? "Requires internet"
+      : "Processing..."
+    : "Confirm dates";
 
   const handleConfirm = () => {
+    if (confirmDisabled) {
+      if (confirmDisabledReason) {
+        setError(confirmDisabledReason);
+      }
+      return;
+    }
     if (!range?.from || !range?.to) {
       setError("Select a start and end date.");
       return;
@@ -62,9 +77,10 @@ export function BookingCalendar({
       <button
         type="button"
         onClick={handleConfirm}
-        className="w-full rounded-full bg-forest px-6 py-3 text-sm font-semibold text-white transition hover:bg-pine"
+        disabled={confirmDisabled}
+        className="w-full rounded-full bg-forest px-6 py-3 text-sm font-semibold text-white transition hover:bg-pine disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Confirm dates
+        {buttonLabel}
       </button>
     </div>
   );

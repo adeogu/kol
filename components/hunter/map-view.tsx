@@ -1,11 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { PoiCategory } from "@/lib/poi";
 import type { Listing } from "@/types";
 import type { MapDebugInfo } from "./map-view.client";
 
 type Props = {
   listings: Listing[];
+  poiCategories?: PoiCategory[];
   onDebug?: (info: MapDebugInfo) => void;
 };
 
@@ -20,11 +22,13 @@ const MapViewClient = dynamic(() => import("./map-view.client"), {
 
 export function MapView({
   listings,
+  poiCategories,
   onDebug,
 }: Props) {
   return (
     <MapViewClient
       listings={listings}
+      poiCategories={poiCategories}
       onDebug={onDebug}
     />
   );

@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
+import { POI_DATA, type PoiCategory } from "@/lib/poi";
 import type { Listing } from "@/types";
 import {
   formatCoordinateValue,
@@ -11,6 +19,7 @@ import {
 
 type Props = {
   listings: Listing[];
+  poiCategories?: PoiCategory[];
   onDebug?: (info: MapDebugInfo) => void;
 };
 
@@ -30,6 +39,7 @@ export type MapDebugInfo = {
     doubleClickZoom: boolean;
     keyboard: boolean;
   };
+  poiCount?: number;
 };
 
 const markerIcon = L.divIcon({
@@ -39,6 +49,7 @@ const markerIcon = L.divIcon({
 
 export default function MapViewClient({
   listings,
+  poiCategories,
   onDebug,
 }: Props) {
   const mapId = useId().replace(/:/g, "");
@@ -60,10 +71,35 @@ export default function MapViewClient({
         .filter((item) => item.coords),
     [listings],
   );
+  const activeCategories = useMemo<PoiCategory[]>(
+    () =>
+      poiCategories && poiCategories.length > 0
+        ? poiCategories
+        : ([
+            "restaurant",
+            "hotel",
+            "motel",
+            "sightseeing",
+            "hunting_store",
+          ] as PoiCategory[]),
+    [poiCategories],
+  );
+  const poiMarkers = useMemo(
+    () => POI_DATA.filter((poi) => activeCategories.includes(poi.category)),
+    [activeCategories],
+  );
+  const poiColorMap: Record<PoiCategory, string> = {
+    restaurant: "#2f8f5b",
+    hotel: "#3f6c52",
+    motel: "#5c8069",
+    sightseeing: "#6b8f3e",
+    hunting_store: "#1f4a2f",
+  };
   const debugInfo = useMemo<MapDebugInfo>(
     () => ({
       totalListings: listings.length,
       markerCount: markers.length,
+      poiCount: poiMarkers.length,
       mapState: mapState ?? undefined,
       sample: listings.slice(0, 5).map((listing) => ({
         id: listing.id,
@@ -72,7 +108,7 @@ export default function MapViewClient({
         raw: formatCoordinateValue(listing.coordinates).slice(0, 160),
       })),
     }),
-    [listings, markers.length, mapState],
+    [listings, markers.length, mapState, poiMarkers.length],
   );
 
   useEffect(() => {
@@ -108,8 +144,8 @@ export default function MapViewClient({
       >
         <MapStateReporter onState={setMapState} markers={markers} />
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://www.carto.com/">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
         {markers.map((item) => (
           <Marker
@@ -127,6 +163,28 @@ export default function MapViewClient({
               </div>
             </Popup>
           </Marker>
+        ))}
+        {poiMarkers.map((poi) => (
+          <CircleMarker
+            key={poi.id}
+            center={[poi.lat, poi.lng]}
+            radius={6}
+            pathOptions={{
+              color: poiColorMap[poi.category],
+              weight: 2,
+              fillColor: poiColorMap[poi.category],
+              fillOpacity: 0.7,
+            }}
+          >
+            <Popup>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-ink">{poi.name}</p>
+                <p className="text-xs uppercase text-ink/60">
+                  {poi.category.replace("_", " ")}
+                </p>
+              </div>
+            </Popup>
+          </CircleMarker>
         ))}
       </MapContainer>
     </div>

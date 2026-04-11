@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
+import Link from "next/link";
 import { BookingCalendar } from "@/components/hunter/booking-calendar";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { createClient } from "@/lib/supabase/client";
 import type { Listing } from "@/types";
 
@@ -11,6 +13,7 @@ type Props = {
 };
 
 export function BookingPanel({ listing }: Props) {
+  const isOnline = useOnlineStatus();
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
     "idle",
   );
@@ -72,6 +75,12 @@ export function BookingPanel({ listing }: Props) {
   }, [listing.id]);
 
   const handleConfirm = async (range: { from: Date; to: Date }) => {
+    if (!isOnline) {
+      setStatus("error");
+      setMessage("You are offline. Reconnect to request this booking.");
+      return;
+    }
+
     setStatus("loading");
     setMessage(null);
 
@@ -116,7 +125,7 @@ export function BookingPanel({ listing }: Props) {
       if (!canBook) {
         setStatus("error");
         setMessage(
-          "Your hunting license must be verified before booking. Upload your license in onboarding/profile first.",
+          `Your hunting license status is ${licenseStatus ?? "UNVERIFIED"}. Verify it from Profile before booking.`,
         );
         return;
       }
@@ -155,6 +164,11 @@ export function BookingPanel({ listing }: Props) {
         expiry_date: profileRecord.license_expiry_date ?? null,
         status: "VERIFIED",
       });
+      await fetch("/api/push/booking-created", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: booking.id }),
+      }).catch(() => null);
 
       const response = await fetch("/api/payments/create-checkout", {
         method: "POST",
@@ -180,16 +194,30 @@ export function BookingPanel({ listing }: Props) {
       <BookingCalendar
         onConfirm={handleConfirm}
         disabledDates={disabledDates}
+        confirmDisabled={!isOnline || status === "loading"}
+        confirmDisabledReason={
+          !isOnline ? "You are offline. Reconnect to request this booking." : null
+        }
       />
+      {!isOnline ? (
+        <p className="rounded-xl border border-amber-300/40 bg-amber-100/70 px-3 py-2 text-xs text-amber-900">
+          Offline mode: booking creation is disabled until your connection returns.
+        </p>
+      ) : null}
       {status === "success" ? (
         <p className="rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
           {message}
         </p>
       ) : null}
       {status === "error" ? (
-        <p className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {message}
-        </p>
+        <div className="space-y-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+          <p>{message}</p>
+          {message?.includes("license status") ? (
+            <Link href="/profile" className="text-xs font-semibold underline">
+              Go to profile verification
+            </Link>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

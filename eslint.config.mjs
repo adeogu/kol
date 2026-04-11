@@ -11,10 +11,14 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
     ".venv/**",
     "**/.venv/**",
     "services/license-verification/.venv/**",
+    ".pytest_cache/**",
+    "**/.pytest_cache/**",
+    "services/license-verification/.pytest_cache/**",
   ]),
 ]);
 

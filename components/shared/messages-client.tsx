@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtime } from "@/hooks/use-realtime";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { MessageList } from "@/components/shared/message-list";
 
 type Conversation = {
@@ -22,6 +23,7 @@ type Message = {
 };
 
 export function MessagesClient() {
+  const isOnline = useOnlineStatus();
   const searchParams = useSearchParams();
   const [userId, setUserId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -111,13 +113,18 @@ export function MessagesClient() {
   }, [messages, selectedId]);
 
   const sendMessage = async () => {
+    if (!isOnline) return;
     if (!content.trim() || !selectedId || !userId) return;
-    const supabase = createClient();
-    await supabase.from("messages").insert({
-      conversation_id: selectedId,
-      sender_id: userId,
-      content: content.trim(),
+    const text = content.trim();
+    const response = await fetch("/api/messages/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: selectedId,
+        content: text,
+      }),
     });
+    if (!response.ok) return;
     setContent("");
   };
 
@@ -157,15 +164,22 @@ export function MessagesClient() {
               placeholder="Type a message"
               value={content}
               onChange={(event) => setContent(event.target.value)}
+              disabled={!isOnline}
             />
             <button
               type="button"
               onClick={sendMessage}
-              className="rounded-full bg-forest px-4 py-2 text-sm font-semibold text-white"
+              disabled={!isOnline}
+              className="rounded-full bg-forest px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               Send
             </button>
           </div>
+          {!isOnline ? (
+            <p className="mt-2 text-xs text-amber-900">
+              You are offline. Messaging is read-only until you reconnect.
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
