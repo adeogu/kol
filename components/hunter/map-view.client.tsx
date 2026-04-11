@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -235,6 +235,17 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
     });
   };
 
+  const handleMapReady = useCallback((map: L.Map) => {
+    mapRef.current = map;
+  }, []);
+
+  const handleUserLocationChange = useCallback(
+    (location: { lat: number; lng: number }) => {
+      setUserLocation(location);
+    },
+    [],
+  );
+
   return (
     <div className="relative h-[420px] w-full overflow-hidden rounded-3xl border border-ink/10">
       <MapContainer
@@ -255,12 +266,8 @@ export default function MapViewClient({ listings, poiCategories, onDebug }: Prop
           markers={markers}
           onBoundsChange={setBounds}
           onState={setMapState}
-          onMapReady={(map) => {
-            mapRef.current = map;
-          }}
-          onUserLocationChange={(location) => {
-            setUserLocation(location);
-          }}
+          onMapReady={handleMapReady}
+          onUserLocationChange={handleUserLocationChange}
           onLocationStatusChange={setLocationStatus}
         />
         <TileLayer attribution={mapTiles.attribution} url={mapTiles.url} />
